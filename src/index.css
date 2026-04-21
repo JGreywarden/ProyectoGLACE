@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── nordic noir palette ─────────────────────────────────────────────────── */
+/* all raw hex values live here; tailwind.config.ts references them via var()  */
+:root {
+  /* backgrounds — darkest to lightest, like ice layers */
+  --c-bg-deep:    #0c1220;
+  --c-bg-base:    #121c2e;
+  --c-bg-surface: #18253a;
+  --c-bg-raised:  #1e2d46;
+
+  /* structural borders */
+  --c-border-subtle: #1e2d46;
+  --c-border:        #253650;
+  --c-border-strong: #2e4265;
+
+  /* ice blue — primary interactive element color */
+  --c-ice-300: #93c9e8;
+  --c-ice-400: #6fb4d8;
+  --c-ice-500: #4e9fc8;
+  --c-ice-600: #3a7fa0;
+
+  /* frost teal — achievements, bond milestones, positive events */
+  --c-frost-400: #6eddd5;
+  --c-frost-500: #4ecdc4;
+
+  /* text hierarchy */
+  --c-text-primary:   #e2eaf3;
+  --c-text-secondary: #8ca3be;
+  --c-text-muted:     #506070;
+  --c-text-disabled:  #364555;
+
+  /* semantic — used sparingly */
+  --c-gold:    #c9a84c; /* medals, warnings, sponsor tiers */
+  --c-danger:  #c95a5a; /* injuries, losses, critical alerts */
+  --c-success: #5bc97a; /* pb, wins, positive progression */
+}
+
+/* ─── reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--c-bg-deep);
+  color: var(--c-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 6px; height: 6px; }
+::-webkit-scrollbar-track  { background: var(--c-bg-base); }
+::-webkit-scrollbar-thumb  { background: var(--c-border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--c-ice-600); }
+
+/* ─── focus ring ──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--c-ice-500);
+  outline-offset: 2px;
+}
