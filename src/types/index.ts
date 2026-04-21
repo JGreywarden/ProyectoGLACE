@@ -58,3 +58,7 @@ export interface GameClock {
   season: number  // 1+
   phase: SeasonPhase
 }
+
+// ─── skater domain ────────────────────────────────────────────────────────────
+
+export * from './skater'
