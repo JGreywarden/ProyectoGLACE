@@ -1,146 +1,96 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { useGameStore, GameState } from './gameStore'
-import type { SkaterData } from '@/types/skater'
-import type { CoachData } from '@/types/coach'
-import type { ClubData } from '@/types/club'
-import type { SeasonData } from '@/types/season'
+import {
+  save,
+  load,
+  getMetadata,
+  deleteSave,
+  generateSessionSummary,
+} from '@/services/saveService'
+import type { SaveSlot, SaveMetadata, SaveResult, GameStateSnapshot } from '@/services/saveService'
 
-export type SaveSlot = 1 | 2 | 3
+export type { SaveSlot, SaveMetadata, SaveResult } from '@/services/saveService'
 
-const SAVE_KEYS: Record<SaveSlot, string> = {
-  1: 'glace_save_1',
-  2: 'glace_save_2',
-  3: 'glace_save_3',
-}
-
-export interface SlotMetadata {
-  fechaGuardado:   string  // ISO-8601 datetime
-  semanaActual:    number
-  temporadaNumero: number
-  nombrePatinador: string
-}
-
-interface SaveData {
-  saveVersion:    1
-  metadata:       SlotMetadata
-  skater:         SkaterData | null
-  coach:          CoachData | null
-  club:           ClubData | null
-  season:         SeasonData | null
-  isFirstSession: boolean
-}
-
-export interface SessionSummary {
-  slots: Record<SaveSlot, SlotMetadata | null>
-  currentSession: {
-    coach:  CoachData | null
-    skater: SkaterData | null
-    season: SeasonData | null
-  }
-}
+// ─── store interface ──────────────────────────────────────────────────────────
 
 interface SaveStoreState {
-  slots:                  Record<SaveSlot, SlotMetadata | null>
-  loadSlotMetadata:       () => void
-  saveGame:               (slot: SaveSlot) => boolean
-  loadGame:               (slot: SaveSlot) => boolean
-  deleteSlot:             (slot: SaveSlot) => void
-  generateSessionSummary: () => SessionSummary
+  /** cached metadata for each slot — populated on init and after each save/delete */
+  slots:             Record<SaveSlot, SaveMetadata | null>
+  /** reads slot metadata from localStorage into Zustand state */
+  loadSlotMetadata:  () => void
+  /** serializes game state and writes to the given slot; returns full result */
+  saveGame:          (slot: SaveSlot) => SaveResult
+  /** loads a save slot, restores game state, and generates the session summary */
+  loadGame:          (slot: SaveSlot) => boolean
+  /** removes primary save and backup for the given slot */
+  deleteSlot:        (slot: SaveSlot) => void
 }
 
-function readMetadata(slot: SaveSlot): SlotMetadata | null {
-  const raw = localStorage.getItem(SAVE_KEYS[slot])
-  if (!raw) return null
-  try {
-    const data = JSON.parse(raw) as SaveData
-    return data.saveVersion === 1 ? data.metadata : null
-  } catch {
-    return null
-  }
-}
+// ─── store ────────────────────────────────────────────────────────────────────
 
 export const useSaveStore = create<SaveStoreState>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       slots: { 1: null, 2: null, 3: null },
 
       loadSlotMetadata: () => {
         set(
-          { slots: { 1: readMetadata(1), 2: readMetadata(2), 3: readMetadata(3) } },
+          { slots: { 1: getMetadata(1), 2: getMetadata(2), 3: getMetadata(3) } },
           false,
           'save/loadSlotMetadata',
         )
       },
 
       saveGame: (slot) => {
-        const { currentSkater, currentCoach, currentClub, currentSeason, isFirstSession } =
-          useGameStore.getState()
-        const metadata: SlotMetadata = {
-          fechaGuardado:   new Date().toISOString(),
-          semanaActual:    currentSeason?.semanaActual    ?? 1,
-          temporadaNumero: currentSeason?.temporadaNumero ?? 1,
-          nombrePatinador: currentSkater?.name ?? '',
+        const gs = useGameStore.getState()
+        const snapshot: GameStateSnapshot = {
+          currentSkater:   gs.currentSkater,
+          currentCoach:    gs.currentCoach,
+          currentClub:     gs.currentClub,
+          currentSeason:   gs.currentSeason,
+          isFirstSession:  gs.isFirstSession,
+          // future: pull from narrativeStore / eventStore when implemented
+          narrativeFlags:  {},
+          dialogueHistory: [],
+          emittedEvents:   [],
         }
-        const saveData: SaveData = {
-          saveVersion: 1,
-          metadata,
-          skater:         currentSkater,
-          coach:          currentCoach,
-          club:           currentClub,
-          season:         currentSeason,
-          isFirstSession,
-        }
-        try {
-          localStorage.setItem(SAVE_KEYS[slot], JSON.stringify(saveData))
+        const result = save(slot, snapshot)
+        if (result.ok) {
           set(
-            (s) => ({ slots: { ...s.slots, [slot]: metadata } }),
+            (s) => ({ slots: { ...s.slots, [slot]: getMetadata(slot) } }),
             false,
             'save/saveGame',
           )
-          return true
-        } catch {
-          return false
         }
+        return result
       },
 
       loadGame: (slot) => {
-        const raw = localStorage.getItem(SAVE_KEYS[slot])
-        if (!raw) return false
-        try {
-          const data = JSON.parse(raw) as SaveData
-          if (data.saveVersion !== 1) return false
-          // bypass changeState validation — restoring a saved state is not a game logic transition
-          useGameStore.setState({
-            currentSkater:  data.skater,
-            currentCoach:   data.coach,
-            currentClub:    data.club,
-            currentSeason:  data.season,
-            isFirstSession: data.isFirstSession,
-            currentState:   GameState.SESSION_RESUME,
-            stateHistory:   [GameState.SESSION_RESUME],
-          })
-          return true
-        } catch {
-          return false
-        }
+        const file = load(slot)
+        if (!file) return false
+
+        // bypass changeState validation — restoring a saved state is not a game logic transition
+        useGameStore.setState({
+          currentSkater:  file.skater,
+          currentCoach:   file.coach,
+          currentClub:    file.club,
+          currentSeason:  file.season,
+          isFirstSession: file.isFirstSession,
+          currentState:   GameState.SESSION_RESUME,
+          stateHistory:   [GameState.SESSION_RESUME],
+          sessionSummary: generateSessionSummary(file),
+        })
+        return true
       },
 
       deleteSlot: (slot) => {
-        localStorage.removeItem(SAVE_KEYS[slot])
+        deleteSave(slot)
         set(
           (s) => ({ slots: { ...s.slots, [slot]: null } }),
           false,
           'save/deleteSlot',
         )
-      },
-
-      generateSessionSummary: () => {
-        const { currentCoach, currentSkater, currentSeason } = useGameStore.getState()
-        return {
-          slots:          get().slots,
-          currentSession: { coach: currentCoach, skater: currentSkater, season: currentSeason },
-        }
       },
     }),
     { name: 'glace/save' },
