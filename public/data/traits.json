@@ -1,0 +1,139 @@
+[
+  {
+    "id": "perfeccionista",
+    "nombre": "Perfeccionista",
+    "descripcion": "Exige de sí misma estándares imposibles. Los logros nunca son suficientes. El trabajo se extiende hasta el límite del cuerpo.",
+    "categoria": "psi",
+    "variante": "neutro",
+    "capaVisibilidad": 0,
+    "efectoMultiplicador": { "saltos": 1.1, "giros": 1.08 },
+    "mutacion": {
+      "traitDestino": "auto-exigencia-destructiva",
+      "estresMinimoAcumulado": 70,
+      "vinculoMaximo": 50,
+      "semanasEnRiesgo": 4,
+      "probabilidadBase": 0.3
+    }
+  },
+  {
+    "id": "resiliente",
+    "nombre": "Resiliente",
+    "descripcion": "Cae y vuelve. No porque no le duela — sino a pesar de que le duele.",
+    "categoria": "psi",
+    "variante": "positivo",
+    "capaVisibilidad": 1,
+    "efectoMultiplicador": { "resistenciaMental": 1.2 },
+    "mutacion": {
+      "traitDestino": "controlado",
+      "estresMinimoAcumulado": 30,
+      "vinculoMaximo": 80,
+      "semanasEnRiesgo": 8,
+      "probabilidadBase": 0.15
+    }
+  },
+  {
+    "id": "artista-nato",
+    "nombre": "Artista Nato",
+    "descripcion": "La música no es una pista — es una conversación. Interpreta con una naturalidad que no se puede enseñar.",
+    "categoria": "psi",
+    "variante": "positivo",
+    "capaVisibilidad": 2,
+    "efectoMultiplicador": { "amplitudLinea": 1.15, "secuenciaDePasos": 1.1 },
+    "mutacion": {
+      "traitDestino": "arte-instrumentalizado",
+      "estresMinimoAcumulado": 55,
+      "vinculoMaximo": 40,
+      "semanasEnRiesgo": 6,
+      "flagRequerido": "presion_externa_constante",
+      "probabilidadBase": 0.2
+    }
+  },
+  {
+    "id": "fragil-bajo-presion",
+    "nombre": "Frágil Bajo Presión",
+    "descripcion": "En entrenamiento es sólida. En competición algo se rompe. La multitud, los jueces, las cámaras — el ambiente la deshace.",
+    "categoria": "psi",
+    "variante": "negativo",
+    "capaVisibilidad": 1,
+    "efectoMultiplicador": { "presionCompetitiva": 0.75 },
+    "mutacion": {
+      "traitDestino": "panico-competitivo",
+      "estresMinimoAcumulado": 65,
+      "semanasEnRiesgo": 3,
+      "flagRequerido": "competicion_importante_proxima",
+      "probabilidadBase": 0.25
+    }
+  },
+  {
+    "id": "cuerpo-fragil",
+    "nombre": "Cuerpo Frágil",
+    "descripcion": "La mecánica es impecable pero el cuerpo paga cada impacto con interés. El historial de lesiones crece más rápido que la media.",
+    "categoria": "fis",
+    "variante": "negativo",
+    "capaVisibilidad": 0,
+    "efectoMultiplicador": { "velocidadRecuperacion": 0.8 }
+  },
+  {
+    "id": "competidor-nato",
+    "nombre": "Competidor Nato",
+    "descripcion": "La presión no la aplasta — la activa. En los momentos de máxima dificultad rinde por encima de su nivel habitual.",
+    "categoria": "psi",
+    "variante": "positivo",
+    "capaVisibilidad": 2,
+    "efectoMultiplicador": { "presionCompetitiva": 1.25, "confianza": 1.1 }
+  },
+  {
+    "id": "ritmo-natural",
+    "nombre": "Ritmo Natural",
+    "descripcion": "Escucha la música de una manera que el cuerpo convierte automáticamente en movimiento. La sincronía es innata.",
+    "categoria": "tec",
+    "variante": "positivo",
+    "capaVisibilidad": 0,
+    "efectoMultiplicador": { "secuenciaDePasos": 1.12, "amplitudLinea": 1.05 }
+  },
+  {
+    "id": "aprendiz-veloz",
+    "nombre": "Aprendiz Veloz",
+    "descripcion": "Tarda menos que la media en consolidar elementos nuevos. La curva de aprendizaje técnico es notablemente más rápida.",
+    "categoria": "tec",
+    "variante": "positivo",
+    "capaVisibilidad": 0,
+    "efectoMultiplicador": { "saltos": 1.15, "giros": 1.15 }
+  },
+  {
+    "id": "auto-exigencia-destructiva",
+    "nombre": "Autoexigencia Destructiva",
+    "descripcion": "La búsqueda de la perfección se ha convertido en su propio peor enemigo. Cada error es una condena. El riesgo de colapso es real.",
+    "categoria": "psi",
+    "variante": "negativo",
+    "capaVisibilidad": 3,
+    "efectoMultiplicador": { "estres": 1.3, "fatigaAcumulada": 1.2 }
+  },
+  {
+    "id": "panico-competitivo",
+    "nombre": "Pánico Competitivo",
+    "descripcion": "Las competiciones importantes desencadenan respuestas físicas que van más allá del nerviosismo normal. El cuerpo traiciona la preparación.",
+    "categoria": "psi",
+    "variante": "negativo",
+    "capaVisibilidad": 1,
+    "efectoMultiplicador": { "presionCompetitiva": 0.55, "estres": 1.4 }
+  },
+  {
+    "id": "quemado",
+    "nombre": "Quemado",
+    "descripcion": "Ha entregado demasiado durante demasiado tiempo. La motivación ya no responde. El abandono es una posibilidad real.",
+    "categoria": "psi",
+    "variante": "negativo",
+    "capaVisibilidad": 2,
+    "efectoMultiplicador": { "motivacionIntrinseca": 0.5, "resistenciaMental": 0.7 }
+  },
+  {
+    "id": "arte-instrumentalizado",
+    "nombre": "Arte Instrumentalizado",
+    "descripcion": "El arte que una vez fue vocación se ha convertido en herramienta. Patina bien, pero ya no patina para ella.",
+    "categoria": "psi",
+    "variante": "negativo",
+    "capaVisibilidad": 3,
+    "efectoMultiplicador": { "amplitudLinea": 0.9, "motivacionIntrinseca": 0.65 }
+  }
+]

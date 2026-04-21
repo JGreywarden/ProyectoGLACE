@@ -1,0 +1,134 @@
+[
+  {
+    "id": "crisis_perfeccionismo_01",
+    "tipo": "crisis",
+    "titulo": "El límite del perfeccionismo",
+    "descripcion": "Son las diez de la noche. Yuna lleva cinco horas en el hielo repitiendo el mismo triple axel. Cada caída la vuelve a poner en pie. No llora. Eso es lo que más te preocupa.",
+    "condiciones": {
+      "minVinculo": 30,
+      "minEstres": 65,
+      "rasgosActivos": ["perfeccionista"]
+    },
+    "opciones": [
+      {
+        "id": "parar_ahora",
+        "texto": "\"Para. Hoy no más. El hielo seguirá aquí mañana.\"",
+        "efectos": {
+          "vinculoDelta": 8,
+          "estresDelta": -15,
+          "fatigueDelta": -10,
+          "narrativeFlags": { "crisis_perfeccionismo_pausa": true }
+        }
+      },
+      {
+        "id": "limite_negociado",
+        "texto": "\"Cinco intentos más. Solo cinco. Con todo.\"",
+        "efectos": {
+          "vinculoDelta": 3,
+          "estresDelta": -5,
+          "fatigueDelta": 5,
+          "narrativeFlags": { "crisis_perfeccionismo_compromiso": true }
+        }
+      },
+      {
+        "id": "ignorar_exigir",
+        "texto": "\"Si quieres el resultado, paga el precio. Sigue.\"",
+        "efectos": {
+          "vinculoDelta": -12,
+          "estresDelta": 10,
+          "fatigueDelta": 15,
+          "narrativeFlags": { "crisis_perfeccionismo_ignorada": true },
+          "rasgoRiesgo": "auto-exigencia-destructiva",
+          "probabilidadMutacion": 0.35
+        }
+      }
+    ]
+  },
+  {
+    "id": "crisis_lesion_ocultada_01",
+    "tipo": "crisis",
+    "titulo": "La rodilla que no nombra",
+    "descripcion": "La fisioterapeuta del club te llama aparte después del entrenamiento. Lleva semanas observando cómo aterriza los saltos. El informe es claro. Lo que no está claro es si ella ya lo sabe y te lo está ocultando.",
+    "condiciones": {
+      "minVinculo": 20,
+      "maxVinculo": 75,
+      "minEstres": 50,
+      "faseTemporada": ["Pico", "Activacion"]
+    },
+    "opciones": [
+      {
+        "id": "confrontar_con_cuidado",
+        "texto": "\"He visto el informe. Quiero saber cómo estás, de verdad.\"",
+        "efectos": {
+          "vinculoDelta": 12,
+          "estresDelta": -8,
+          "narrativeFlags": { "lesion_confrontada_con_apertura": true }
+        }
+      },
+      {
+        "id": "reducir_carga_silencio",
+        "texto": "Cambias el plan de entrenamiento sin decir nada. Mañana, menos impacto.",
+        "efectos": {
+          "vinculoDelta": 4,
+          "fatigueDelta": -8,
+          "narrativeFlags": { "lesion_gestionada_en_silencio": true }
+        }
+      },
+      {
+        "id": "competir_igual",
+        "texto": "La competición es en diez días. El riesgo es calculado.",
+        "efectos": {
+          "vinculoDelta": -6,
+          "estresDelta": 8,
+          "fatigueDelta": 10,
+          "narrativeFlags": { "lesion_ignorada_alto_riesgo": true },
+          "rasgoRiesgo": "cuerpo-fragil",
+          "probabilidadMutacion": 0.25
+        }
+      }
+    ]
+  },
+  {
+    "id": "crisis_quemado_01",
+    "tipo": "crisis",
+    "titulo": "Ya no sé por qué patino",
+    "descripcion": "Dos temporadas de resultados mediocres. Hoy, antes de entrar al hielo, se ha quedado parada diez minutos con los patines en la mano. Cuando le preguntas, dice: «No lo sé». Y suena completamente honesta.",
+    "condiciones": {
+      "maxVinculo": 60,
+      "minEstres": 55,
+      "faseTemporada": ["Construccion", "Cierre"],
+      "flagsRequeridos": ["segunda_temporada_o_mas"]
+    },
+    "opciones": [
+      {
+        "id": "escuchar_sin_responder",
+        "texto": "Te sientas a su lado. No dices nada en un buen rato.",
+        "efectos": {
+          "vinculoDelta": 15,
+          "estresDelta": -12,
+          "narrativeFlags": { "dialogo_silencio_profundo": true }
+        }
+      },
+      {
+        "id": "recordar_origen",
+        "texto": "\"¿Recuerdas el primer salto que hiciste bien? Cuéntame eso.\"",
+        "efectos": {
+          "vinculoDelta": 10,
+          "estresDelta": -8,
+          "narrativeFlags": { "dialogo_memoria_origen": true }
+        }
+      },
+      {
+        "id": "presionar_metas",
+        "texto": "\"El Mundial está en seis meses. Ahora no es el momento.\"",
+        "efectos": {
+          "vinculoDelta": -18,
+          "estresDelta": 5,
+          "narrativeFlags": { "crisis_quemado_ignorada": true },
+          "rasgoRiesgo": "quemado",
+          "probabilidadMutacion": 0.45
+        }
+      }
+    ]
+  }
+]

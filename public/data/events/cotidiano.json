@@ -1,0 +1,70 @@
+[
+  {
+    "id": "cotidiano_musica_nueva_01",
+    "tipo": "cotidiano",
+    "titulo": "Una canción de camino al hielo",
+    "descripcion": "Antes de entrar a la pista, la escuchas tararear algo que no reconoces. Cuando le preguntas, te muestra el teléfono. Es una pieza de Arvo Pärt que no habías considerado. Durante diez minutos, el entrenamiento desaparece del guion.",
+    "condiciones": {
+      "minVinculo": 35,
+      "maxEstres": 60,
+      "faseTemporada": ["Construccion", "Cierre"]
+    },
+    "opciones": [
+      {
+        "id": "explorar_juntos",
+        "texto": "\"Ponla otra vez. Cuéntame qué sientes cuando la escuchas.\"",
+        "efectos": {
+          "vinculoDelta": 7,
+          "narrativeFlags": { "musica_compartida_con_exito": true },
+          "atributosDelta": { "pcsBonus": 2 }
+        }
+      },
+      {
+        "id": "guardar_para_despues",
+        "texto": "\"Interesante. Lo guardamos para la próxima temporada.\"",
+        "efectos": {
+          "vinculoDelta": 3,
+          "narrativeFlags": { "musica_archivada_para_futuro": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "cotidiano_mal_dia_01",
+    "tipo": "cotidiano",
+    "titulo": "Uno de esos días",
+    "descripcion": "Llega con media hora de retraso. Sin explicación. Los primeros veinte minutos sobre el hielo son un desastre. No es falta de técnica — es que no está aquí. A veces pasa. La pregunta es cómo lo gestionas.",
+    "condiciones": {
+      "maxEstres": 70
+    },
+    "opciones": [
+      {
+        "id": "terminar_antes",
+        "texto": "Acortas el entrenamiento una hora. No hay nada que ganar hoy.",
+        "efectos": {
+          "vinculoDelta": 4,
+          "fatigueDelta": -5,
+          "narrativeFlags": { "mal_dia_gestionado_pausa": true }
+        }
+      },
+      {
+        "id": "cambiar_actividad",
+        "texto": "Cambias el plan. Hoy solo pasos. Sin saltos, sin presión.",
+        "efectos": {
+          "vinculoDelta": 3,
+          "narrativeFlags": { "mal_dia_reconducido": true }
+        }
+      },
+      {
+        "id": "mantener_plan",
+        "texto": "El plan es el plan. La disciplina se demuestra precisamente los días malos.",
+        "efectos": {
+          "vinculoDelta": -2,
+          "estresDelta": 5,
+          "fatigueDelta": 8,
+          "narrativeFlags": { "mal_dia_forzado": true }
+        }
+      }
+    ]
+  }
+]

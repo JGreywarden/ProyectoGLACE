@@ -4,6 +4,7 @@ import type { SkaterData } from '@/types/skater'
 import type { CoachData } from '@/types/coach'
 import type { ClubData } from '@/types/club'
 import type { SeasonData } from '@/types/season'
+import type { SessionSummary } from '@/services/saveService'
 
 export enum GameState {
   BOOT               = 'BOOT',
@@ -34,19 +35,21 @@ const VALID_TRANSITIONS: Readonly<Record<GameState, readonly GameState[]>> = {
 }
 
 interface GameStoreState {
-  currentState:   GameState
-  currentSkater:  SkaterData | null
-  currentCoach:   CoachData | null
-  currentClub:    ClubData | null
-  currentSeason:  SeasonData | null
-  isFirstSession: boolean
-  stateHistory:   GameState[]
-  changeState:       (newState: GameState) => void
-  setCurrentSkater:  (skater: SkaterData | null) => void
-  setCurrentCoach:   (coach: CoachData | null) => void
-  setCurrentClub:    (club: ClubData | null) => void
-  setCurrentSeason:  (season: SeasonData | null) => void
-  setIsFirstSession: (value: boolean) => void
+  currentState:    GameState
+  currentSkater:   SkaterData | null
+  currentCoach:    CoachData | null
+  currentClub:     ClubData | null
+  currentSeason:   SeasonData | null
+  isFirstSession:  boolean
+  stateHistory:    GameState[]
+  sessionSummary:  SessionSummary | null
+  changeState:        (newState: GameState) => void
+  setCurrentSkater:   (skater: SkaterData | null) => void
+  setCurrentCoach:    (coach: CoachData | null) => void
+  setCurrentClub:     (club: ClubData | null) => void
+  setCurrentSeason:   (season: SeasonData | null) => void
+  setIsFirstSession:  (value: boolean) => void
+  setSessionSummary:  (summary: SessionSummary | null) => void
 }
 
 export const useGameStore = create<GameStoreState>()(
@@ -59,6 +62,7 @@ export const useGameStore = create<GameStoreState>()(
       currentSeason:  null,
       isFirstSession: true,
       stateHistory:   [GameState.BOOT],
+      sessionSummary: null,
 
       changeState: (newState) => {
         const { currentState, stateHistory } = get()
@@ -75,11 +79,12 @@ export const useGameStore = create<GameStoreState>()(
         )
       },
 
-      setCurrentSkater:  (skater) => set({ currentSkater: skater },  false, 'game/setCurrentSkater'),
-      setCurrentCoach:   (coach)  => set({ currentCoach: coach },    false, 'game/setCurrentCoach'),
-      setCurrentClub:    (club)   => set({ currentClub: club },      false, 'game/setCurrentClub'),
-      setCurrentSeason:  (season) => set({ currentSeason: season },  false, 'game/setCurrentSeason'),
-      setIsFirstSession: (value)  => set({ isFirstSession: value },  false, 'game/setIsFirstSession'),
+      setCurrentSkater:  (skater)  => set({ currentSkater: skater },   false, 'game/setCurrentSkater'),
+      setCurrentCoach:   (coach)   => set({ currentCoach: coach },     false, 'game/setCurrentCoach'),
+      setCurrentClub:    (club)    => set({ currentClub: club },       false, 'game/setCurrentClub'),
+      setCurrentSeason:  (season)  => set({ currentSeason: season },   false, 'game/setCurrentSeason'),
+      setIsFirstSession: (value)   => set({ isFirstSession: value },   false, 'game/setIsFirstSession'),
+      setSessionSummary: (summary) => set({ sessionSummary: summary }, false, 'game/setSessionSummary'),
     }),
     { name: 'glace/game' },
   ),

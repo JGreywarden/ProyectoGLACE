@@ -1,0 +1,82 @@
+[
+  {
+    "id": "skater_yuna_park",
+    "nombre": "Park Yuna",
+    "edad": 16,
+    "nacionalidad": "KOR",
+    "nivelVisible": {
+      "saltos": 52,
+      "giros": 48,
+      "secuenciaDePasos": 35,
+      "amplitudLinea": 44
+    },
+    "potencial": "excepcional",
+    "rasgosVisibles": ["aprendiz-veloz"],
+    "costeContratacion": 8000,
+    "disponible": true
+  },
+  {
+    "id": "skater_masha_volkov",
+    "nombre": "Maria Volkova",
+    "edad": 19,
+    "nacionalidad": "RUS",
+    "nivelVisible": {
+      "saltos": 68,
+      "giros": 61,
+      "secuenciaDePasos": 55,
+      "amplitudLinea": 58
+    },
+    "potencial": "medio",
+    "rasgosVisibles": ["resiliente", "perfeccionista"],
+    "costeContratacion": 22000,
+    "disponible": true
+  },
+  {
+    "id": "skater_hana_fujimoto",
+    "nombre": "Fujimoto Hana",
+    "edad": 17,
+    "nacionalidad": "JPN",
+    "nivelVisible": {
+      "saltos": 45,
+      "giros": 62,
+      "secuenciaDePasos": 58,
+      "amplitudLinea": 70
+    },
+    "potencial": "alto",
+    "rasgosVisibles": ["artista-nato", "ritmo-natural"],
+    "costeContratacion": 18000,
+    "disponible": true
+  },
+  {
+    "id": "skater_clara_muñoz",
+    "nombre": "Clara Muñoz",
+    "edad": 21,
+    "nacionalidad": "ESP",
+    "nivelVisible": {
+      "saltos": 58,
+      "giros": 54,
+      "secuenciaDePasos": 62,
+      "amplitudLinea": 55
+    },
+    "potencial": "bajo",
+    "rasgosVisibles": ["competidor-nato"],
+    "costeContratacion": 12000,
+    "disponible": true
+  },
+  {
+    "id": "skater_sofia_lindgren",
+    "nombre": "Sofia Lindgren",
+    "edad": 15,
+    "nacionalidad": "SWE",
+    "nivelVisible": {
+      "saltos": 28,
+      "giros": 32,
+      "secuenciaDePasos": 24,
+      "amplitudLinea": 35
+    },
+    "potencial": "excepcional",
+    "rasgosVisibles": [],
+    "costeContratacion": 4000,
+    "disponible": true
+  }
+]
