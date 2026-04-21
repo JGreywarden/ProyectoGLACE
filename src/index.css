@@ -68,3 +68,13 @@ body {
   outline: 2px solid var(--c-ice-500);
   outline-offset: 2px;
 }
+
+/* ─── page transitions ────────────────────────────────────────────────────── */
+@keyframes glace-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.glace-page-fade {
+  animation: glace-fade-in 200ms ease-out both;
+}
