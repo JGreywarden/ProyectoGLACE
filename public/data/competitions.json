@@ -1,0 +1,102 @@
+[
+  {
+    "id": "nacional_otono",
+    "nombre": "Campeonato Nacional Otoño",
+    "tipo": "nacional",
+    "semanaISU": 10,
+    "ubicacion": "Madrid",
+    "nivelPrestigio": 1,
+    "puntosRanking": 12,
+    "montosPremio": { "1": 2000, "2": 1200, "3": 800 }
+  },
+  {
+    "id": "internacional_challenger_a",
+    "nombre": "Challenger Series A",
+    "tipo": "internacional",
+    "semanaISU": 12,
+    "ubicacion": "Varsovia",
+    "nivelPrestigio": 2,
+    "puntosRanking": 25,
+    "montosPremio": { "1": 5000, "2": 3000, "3": 2000 }
+  },
+  {
+    "id": "grandprix_1",
+    "nombre": "Skate America",
+    "tipo": "grandprix",
+    "semanaISU": 15,
+    "ubicacion": "Chicago",
+    "nivelPrestigio": 4,
+    "puntosRanking": 80,
+    "montosPremio": { "1": 18000, "2": 13000, "3": 9000, "4": 7000, "5": 5000, "6": 4000 }
+  },
+  {
+    "id": "grandprix_2",
+    "nombre": "Cup of China",
+    "tipo": "grandprix",
+    "semanaISU": 17,
+    "ubicacion": "Beijing",
+    "nivelPrestigio": 4,
+    "puntosRanking": 80,
+    "montosPremio": { "1": 18000, "2": 13000, "3": 9000, "4": 7000, "5": 5000, "6": 4000 }
+  },
+  {
+    "id": "grandprix_3",
+    "nombre": "Rostelécom Cup",
+    "tipo": "grandprix",
+    "semanaISU": 17,
+    "ubicacion": "Moscú",
+    "nivelPrestigio": 4,
+    "puntosRanking": 80,
+    "montosPremio": { "1": 18000, "2": 13000, "3": 9000, "4": 7000, "5": 5000, "6": 4000 }
+  },
+  {
+    "id": "grandprix_4",
+    "nombre": "NHK Trophy",
+    "tipo": "grandprix",
+    "semanaISU": 19,
+    "ubicacion": "Tokio",
+    "nivelPrestigio": 4,
+    "puntosRanking": 80,
+    "montosPremio": { "1": 18000, "2": 13000, "3": 9000, "4": 7000, "5": 5000, "6": 4000 }
+  },
+  {
+    "id": "final_grandprix",
+    "nombre": "Gran Premio Final",
+    "tipo": "finalGrandprix",
+    "semanaISU": 21,
+    "ubicacion": "Barcelona",
+    "nivelPrestigio": 5,
+    "puntosRanking": 150,
+    "montosPremio": { "1": 40000, "2": 28000, "3": 20000, "4": 16000, "5": 14000, "6": 12000 }
+  },
+  {
+    "id": "campeonato_europeo",
+    "nombre": "Campeonato de Europa",
+    "tipo": "europeo",
+    "semanaISU": 24,
+    "ubicacion": "Helsinki",
+    "nivelPrestigio": 5,
+    "puntosRanking": 140,
+    "montosPremio": { "1": 30000, "2": 20000, "3": 15000 }
+  },
+  {
+    "id": "campeonato_mundial",
+    "nombre": "Campeonato del Mundo",
+    "tipo": "mundial",
+    "semanaISU": 27,
+    "ubicacion": "Montréal",
+    "nivelPrestigio": 5,
+    "puntosRanking": 200,
+    "montosPremio": { "1": 50000, "2": 35000, "3": 25000 }
+  },
+  {
+    "id": "juegos_olimpicos",
+    "nombre": "Juegos Olímpicos de Invierno",
+    "tipo": "olimpico",
+    "semanaISU": 28,
+    "ubicacion": "Milano-Cortina",
+    "nivelPrestigio": 5,
+    "puntosRanking": 0,
+    "montosPremio": { "1": 0, "2": 0, "3": 0 }
+  }
+]

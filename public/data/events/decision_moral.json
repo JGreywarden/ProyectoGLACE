@@ -1,0 +1,79 @@
+[
+  {
+    "id": "moral_juez_conocido_01",
+    "tipo": "decision_moral",
+    "titulo": "El favor que no se pide",
+    "descripcion": "En la gala post-competición, un juez técnico con quien tienes cierta amistad te lleva aparte. No dice nada explícito — solo que le parece que el programa libre merece más reconocimiento del que recibe. La insinuación es clara.",
+    "condiciones": {
+      "minVinculo": 20,
+      "faseTemporada": ["Pico", "Rearme"]
+    },
+    "opciones": [
+      {
+        "id": "declinar_educadamente",
+        "texto": "\"Confío en que los jueces harán su trabajo. Siempre lo hacen.\"",
+        "efectos": {
+          "vinculoDelta": 0,
+          "narrativeFlags": { "favor_rechazado_con_elegancia": true },
+          "atributosDelta": { "repHonestidad": 8 }
+        }
+      },
+      {
+        "id": "escuchar_sin_comprometerse",
+        "texto": "Escuchas. No dices sí ni no. Solo escuchas.",
+        "efectos": {
+          "vinculoDelta": 0,
+          "narrativeFlags": { "favor_ambiguedad_deliberada": true },
+          "atributosDelta": { "repHonestidad": -3 }
+        }
+      },
+      {
+        "id": "aceptar_implicacion",
+        "texto": "\"Agradezco que lo digas. Ella trabaja muy duro.\"",
+        "efectos": {
+          "vinculoDelta": 0,
+          "narrativeFlags": { "favor_aceptado_implicito": true },
+          "atributosDelta": { "repHonestidad": -15, "repResultados": 5 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "moral_sobreentrenamiento_rival_01",
+    "tipo": "decision_moral",
+    "titulo": "Lo que ves en el otro club",
+    "descripcion": "En un torneo menor coincides con una patinadora de un club rival. Tiene 15 años y los síntomas de sobreentrenamiento son evidentes para cualquier profesional. Su entrenador no está prestando atención.",
+    "condiciones": {
+      "minVinculo": 15,
+      "faseTemporada": ["Activacion", "Pico", "Rearme"]
+    },
+    "opciones": [
+      {
+        "id": "hablar_con_entrenador",
+        "texto": "Buscas a su entrenador y se lo dices directamente, sin rodeos.",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": { "intervencion_rival_directa": true },
+          "atributosDelta": { "repCuidado": 10, "repInstitucional": -5 }
+        }
+      },
+      {
+        "id": "hablar_con_medico",
+        "texto": "Hablas discretamente con el médico del torneo.",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": { "intervencion_rival_discreta": true },
+          "atributosDelta": { "repCuidado": 7 }
+        }
+      },
+      {
+        "id": "no_interferir",
+        "texto": "No es tu patinadora, no es tu responsabilidad.",
+        "efectos": {
+          "vinculoDelta": 0,
+          "narrativeFlags": { "intervencion_rival_omitida": true }
+        }
+      }
+    ]
+  }
+]

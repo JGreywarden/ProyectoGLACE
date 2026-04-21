@@ -1,0 +1,59 @@
+[
+  {
+    "id": "revelacion_miedo_escena_01",
+    "tipo": "revelacion",
+    "titulo": "Lo que no aparece en los datos",
+    "descripcion": "Lleváis semanas con el vínculo en ascenso. Hoy, después del entrenamiento, ella se queda mirando la pista vacía más tiempo del habitual. Cuando se gira hacia ti hay algo distinto en su cara.",
+    "condiciones": {
+      "minVinculo": 40,
+      "maxEstres": 50
+    },
+    "opciones": [
+      {
+        "id": "preguntar_directamente",
+        "texto": "\"¿Qué estás pensando?\"",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": { "rasgo_revelado_presencia_escenica": true }
+        }
+      },
+      {
+        "id": "esperar",
+        "texto": "Esperas. A veces el silencio es la única respuesta correcta.",
+        "efectos": {
+          "vinculoDelta": 10,
+          "narrativeFlags": { "rasgo_revelado_presencia_escenica": true, "silencio_usado_con_exito": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "revelacion_motivacion_externa_01",
+    "tipo": "revelacion",
+    "titulo": "El peso invisible",
+    "descripcion": "Durante la sesión de mental coaching mencionas los próximos campeonatos. Hay una reacción casi imperceptible — no miedo, algo más cercano al cansancio. La sesión avanza, pero algo ha quedado suspendido en el aire.",
+    "condiciones": {
+      "minVinculo": 55,
+      "faseTemporada": ["Activacion", "Pico"]
+    },
+    "opciones": [
+      {
+        "id": "retomar_despues",
+        "texto": "Terminas la sesión. Lo retomas al día siguiente, en privado.",
+        "efectos": {
+          "vinculoDelta": 8,
+          "estresDelta": -5,
+          "narrativeFlags": { "rasgo_revelado_motivacion_externa": true }
+        }
+      },
+      {
+        "id": "ignorar_señal",
+        "texto": "Continúas con el plan. Hay trabajo que hacer.",
+        "efectos": {
+          "vinculoDelta": -3,
+          "narrativeFlags": { "señal_ignorada_motivacion": true }
+        }
+      }
+    ]
+  }
+]

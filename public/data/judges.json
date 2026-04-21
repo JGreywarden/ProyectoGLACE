@@ -1,0 +1,122 @@
+[
+  {
+    "id": "judge_nakamura_keiko",
+    "nombre": "Nakamura Keiko",
+    "pais": "JPN",
+    "experiencia": 18,
+    "sesgos": {
+      "tes": 0.3,
+      "pcs": { "sk": 0.2, "tr": 0.4, "pe": -0.1, "co": 0.1, "in": -0.2 }
+    }
+  },
+  {
+    "id": "judge_lecomte_isabelle",
+    "nombre": "Isabelle Lecomte",
+    "pais": "FRA",
+    "experiencia": 22,
+    "sesgos": {
+      "tes": -0.2,
+      "pcs": { "sk": 0.1, "tr": 0.2, "pe": 0.5, "co": 0.4, "in": 0.5 }
+    }
+  },
+  {
+    "id": "judge_petrov_aleksandr",
+    "nombre": "Aleksandr Petrov",
+    "pais": "RUS",
+    "experiencia": 25,
+    "sesgos": {
+      "tes": 0.5,
+      "pcs": { "sk": 0.3, "tr": 0.1, "pe": -0.2, "co": -0.1, "in": -0.3 }
+    }
+  },
+  {
+    "id": "judge_kim_minjun",
+    "nombre": "Kim Min-Jun",
+    "pais": "KOR",
+    "experiencia": 12,
+    "sesgos": {
+      "tes": 0.2,
+      "pcs": { "sk": 0.3, "tr": 0.5, "pe": 0.2, "co": 0.1, "in": 0.3 }
+    }
+  },
+  {
+    "id": "judge_hoffman_ursula",
+    "nombre": "Ursula Hoffmann",
+    "pais": "GER",
+    "experiencia": 30,
+    "sesgos": {
+      "tes": -0.1,
+      "pcs": { "sk": -0.2, "tr": -0.1, "pe": -0.3, "co": -0.2, "in": -0.1 }
+    }
+  },
+  {
+    "id": "judge_chen_wei",
+    "nombre": "Chen Wei",
+    "pais": "CHN",
+    "experiencia": 14,
+    "sesgos": {
+      "tes": 0.4,
+      "pcs": { "sk": 0.2, "tr": 0.1, "pe": 0.1, "co": -0.1, "in": -0.1 }
+    }
+  },
+  {
+    "id": "judge_rossi_marco",
+    "nombre": "Marco Rossi",
+    "pais": "ITA",
+    "experiencia": 19,
+    "sesgos": {
+      "tes": -0.1,
+      "pcs": { "sk": 0.1, "tr": 0.2, "pe": 0.4, "co": 0.5, "in": 0.4 }
+    }
+  },
+  {
+    "id": "judge_virtanen_paavo",
+    "nombre": "Paavo Virtanen",
+    "pais": "FIN",
+    "experiencia": 16,
+    "sesgos": {
+      "tes": -0.3,
+      "pcs": { "sk": -0.1, "tr": -0.2, "pe": -0.2, "co": -0.1, "in": -0.3 }
+    }
+  },
+  {
+    "id": "judge_santos_elena",
+    "nombre": "Elena Santos",
+    "pais": "ESP",
+    "experiencia": 11,
+    "sesgos": {
+      "tes": 0.1,
+      "pcs": { "sk": 0.0, "tr": 0.1, "pe": 0.3, "co": 0.2, "in": 0.5 }
+    }
+  },
+  {
+    "id": "judge_mcallister_diane",
+    "nombre": "Diane McAllister",
+    "pais": "USA",
+    "experiencia": 20,
+    "sesgos": {
+      "tes": 0.1,
+      "pcs": { "sk": 0.1, "tr": 0.0, "pe": 0.4, "co": 0.1, "in": 0.2 }
+    }
+  },
+  {
+    "id": "judge_kowalski_piotr",
+    "nombre": "Piotr Kowalski",
+    "pais": "POL",
+    "experiencia": 9,
+    "sesgos": {
+      "tes": 0.2,
+      "pcs": { "sk": 0.1, "tr": 0.0, "pe": 0.1, "co": 0.0, "in": 0.1 }
+    }
+  },
+  {
+    "id": "judge_tanaka_hiroshi",
+    "nombre": "Tanaka Hiroshi",
+    "pais": "JPN",
+    "experiencia": 27,
+    "sesgos": {
+      "tes": 0.2,
+      "pcs": { "sk": 0.1, "tr": 0.3, "pe": 0.2, "co": 0.3, "in": 0.4 }
+    }
+  }
+]

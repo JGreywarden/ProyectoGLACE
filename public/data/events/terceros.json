@@ -1,0 +1,72 @@
+[
+  {
+    "id": "terceros_familia_presion_01",
+    "tipo": "terceros",
+    "titulo": "La llamada de la madre",
+    "descripcion": "La madre de tu patinadora te llama directamente. No es la primera vez. Esta vez la conversación dura cuarenta minutos y en algún punto queda claro que ella tiene una opinión muy formada sobre el programa libre de esta temporada.",
+    "condiciones": {
+      "minVinculo": 10,
+      "faseTemporada": ["Construccion", "Activacion"]
+    },
+    "opciones": [
+      {
+        "id": "redirigir_a_patinadora",
+        "texto": "\"Las decisiones artísticas las toma ella. Con mi asesoramiento. Te animo a hablarlo con ella directamente.\"",
+        "efectos": {
+          "vinculoDelta": 5,
+          "narrativeFlags": { "familia_redirigida_correctamente": true },
+          "atributosDelta": { "repCuidado": 4 }
+        }
+      },
+      {
+        "id": "escuchar_ceder_parcialmente",
+        "texto": "Escuchas. Cambias un detalle menor del programa para mantener la paz.",
+        "efectos": {
+          "vinculoDelta": -4,
+          "narrativeFlags": { "familia_influye_programa": true },
+          "atributosDelta": { "repArtistica": -3 }
+        }
+      },
+      {
+        "id": "marcar_limite_firme",
+        "texto": "\"Entiendo tu preocupación. El programa no va a cambiar. Si quieres más información, habla con tu hija.\"",
+        "efectos": {
+          "vinculoDelta": 8,
+          "estresDelta": -3,
+          "narrativeFlags": { "limite_familia_establecido": true },
+          "atributosDelta": { "repHonestidad": 6 }
+        }
+      }
+    ]
+  },
+  {
+    "id": "terceros_sponsor_exige_01",
+    "tipo": "terceros",
+    "titulo": "El sponsor tiene expectativas",
+    "descripcion": "El representante del sponsor principal solicita una reunión. El contrato se renueva en tres meses y quieren ver «más presencia mediática». La implicación es que tu patinadora debería hacer más entrevistas y apariciones que, sabes perfectamente, la agotan.",
+    "condiciones": {
+      "minVinculo": 20,
+      "faseTemporada": ["Rearme", "Cierre"]
+    },
+    "opciones": [
+      {
+        "id": "proteger_a_patinadora",
+        "texto": "Negocias: dos apariciones al mes, en fechas que ella elija.",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": { "sponsor_negociado_proteccion": true },
+          "atributosDelta": { "repCuidado": 8, "ingresoSemanal": -200 }
+        }
+      },
+      {
+        "id": "aceptar_condiciones",
+        "texto": "Aceptas lo que piden. El dinero es importante ahora mismo.",
+        "efectos": {
+          "vinculoDelta": -5,
+          "estresDelta": 8,
+          "narrativeFlags": { "sponsor_aceptado_sin_filtro": true }
+        }
+      }
+    ]
+  }
+]

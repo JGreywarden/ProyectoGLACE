@@ -1,0 +1,258 @@
+[
+  {
+    "id": "pistaPrincipal",
+    "nombre": "Pista Principal",
+    "descripcion": "La superficie de hielo donde se desarrolla el entrenamiento técnico. Su calidad afecta directamente la capacidad de practicar saltos y pasos.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Pista básica. Superficie funcional, horarios compartidos con el club amateur.",
+        "costoUpgrade": 25000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "saltosMejora": 1, "girosMejora": 1 }
+      },
+      {
+        "descripcion": "Uso exclusivo en horario matinal. Superficie mejorada, reparaciones semanales.",
+        "costoUpgrade": 60000,
+        "semanasConstruccion": 5,
+        "bonificaciones": { "saltosMejora": 3, "girosMejora": 2, "lesionRiesgoReduccion": 0.05 }
+      },
+      {
+        "descripcion": "Pista profesional con resurfacing diario. Acceso completo sin restricciones.",
+        "costoUpgrade": 120000,
+        "semanasConstruccion": 8,
+        "bonificaciones": { "saltosMejora": 5, "girosMejora": 4, "lesionRiesgoReduccion": 0.1 }
+      },
+      {
+        "descripcion": "Instalación ISU-homologada. Estándares olímpicos. Las competidoras rivales pagan por entrenar aquí.",
+        "costoUpgrade": 250000,
+        "semanasConstruccion": 12,
+        "bonificaciones": { "saltosMejora": 8, "girosMejora": 6, "lesionRiesgoReduccion": 0.15, "ingresoSemanal": 500 }
+      }
+    ]
+  },
+  {
+    "id": "gimnasioFuerza",
+    "nombre": "Gimnasio de Fuerza",
+    "descripcion": "Equipamiento de acondicionamiento físico. Afecta la velocidad de recuperación de fatiga y reduce el riesgo de lesiones musculares.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Equipamiento básico. Mancuernas, banco y cinta. Lo esencial.",
+        "costoUpgrade": 15000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "recuperacionBonus": 2, "lesionRiesgoReduccion": 0.03 }
+      },
+      {
+        "descripcion": "Equipamiento completo con máquinas de cable y zona de estiramientos.",
+        "costoUpgrade": 35000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "recuperacionBonus": 5, "lesionRiesgoReduccion": 0.07 }
+      },
+      {
+        "descripcion": "Sala especializada para patinadores. Trabajo de pliometría, core y equilibrio.",
+        "costoUpgrade": 70000,
+        "semanasConstruccion": 5,
+        "bonificaciones": { "recuperacionBonus": 8, "lesionRiesgoReduccion": 0.12, "saltosMejora": 2 }
+      },
+      {
+        "descripcion": "Centro de alto rendimiento. Análisis de movimiento, plataformas de fuerza, fisio integrado.",
+        "costoUpgrade": 150000,
+        "semanasConstruccion": 8,
+        "bonificaciones": { "recuperacionBonus": 12, "lesionRiesgoReduccion": 0.18, "saltosMejora": 3 }
+      }
+    ]
+  },
+  {
+    "id": "fisioterapia",
+    "nombre": "Centro de Fisioterapia",
+    "descripcion": "Prevención y tratamiento de lesiones. Reduce la probabilidad de lesionarse y acorta los tiempos de recuperación cuando ocurren.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Sala básica con camilla y material de primeros auxilios. Acceso al fisio del club dos días por semana.",
+        "costoUpgrade": 20000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "lesionRiesgoReduccion": 0.08, "recuperacionBonus": 3 }
+      },
+      {
+        "descripcion": "Fisioterapeuta contratado a media jornada. Tratamiento preventivo semanal.",
+        "costoUpgrade": 45000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "lesionRiesgoReduccion": 0.15, "recuperacionBonus": 6 }
+      },
+      {
+        "descripcion": "Fisio a jornada completa y médico deportivo mensual. Protocolos de carga individualizados.",
+        "costoUpgrade": 90000,
+        "semanasConstruccion": 4,
+        "bonificaciones": { "lesionRiesgoReduccion": 0.22, "recuperacionBonus": 10 }
+      },
+      {
+        "descripcion": "Equipo médico completo: fisio, médico deportivo, nutricionista. Monitorización biométrica semanal.",
+        "costoUpgrade": 180000,
+        "semanasConstruccion": 6,
+        "bonificaciones": { "lesionRiesgoReduccion": 0.30, "recuperacionBonus": 15 }
+      }
+    ]
+  },
+  {
+    "id": "salaMental",
+    "nombre": "Sala de Trabajo Mental",
+    "descripcion": "Espacio para el trabajo psicológico. Reduce el estrés acumulado, mejora la gestión de la presión competitiva y fortalece el vínculo.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Sala silenciosa con materiales de visualización básica. Sin profesional dedicado.",
+        "costoUpgrade": 12000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "estresMejora": 3, "vinculoBonus": 1 }
+      },
+      {
+        "descripcion": "Psicóloga deportiva visitante una vez por semana. Protocolos de respiración y focalización.",
+        "costoUpgrade": 30000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "estresMejora": 6, "vinculoBonus": 2 }
+      },
+      {
+        "descripcion": "Psicóloga a media jornada. Sesiones individuales y trabajo de gestión de presión precompetitiva.",
+        "costoUpgrade": 65000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "estresMejora": 10, "vinculoBonus": 3, "pcsBonus": 2 }
+      },
+      {
+        "descripcion": "Equipo de psicología del rendimiento. Sesiones en competición, coaching de resiliencia.",
+        "costoUpgrade": 130000,
+        "semanasConstruccion": 5,
+        "bonificaciones": { "estresMejora": 15, "vinculoBonus": 5, "pcsBonus": 4 }
+      }
+    ]
+  },
+  {
+    "id": "estudioCoreografia",
+    "nombre": "Estudio de Coreografía",
+    "descripcion": "Espacio para el desarrollo artístico y la creación de programas. Mejora la calidad del PCS y reduce el tiempo de pulir nuevas coreografías.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Sala con espejo y suelo de tarima. Se trabaja fuera del hielo antes de llevar el programa a pista.",
+        "costoUpgrade": 18000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "pcsBonus": 2, "estresMejora": 1 }
+      },
+      {
+        "descripcion": "Coreógrafa colaboradora. Sistemas de audio y proyección para visualización de programas.",
+        "costoUpgrade": 40000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "pcsBonus": 4, "vinculoBonus": 1 }
+      },
+      {
+        "descripcion": "Coreógrafa residente. Sala de grabación para análisis de movimiento en tiempo real.",
+        "costoUpgrade": 85000,
+        "semanasConstruccion": 5,
+        "bonificaciones": { "pcsBonus": 7, "vinculoBonus": 2, "estresMejora": 2 }
+      },
+      {
+        "descripcion": "Estudio profesional con coreógrafo/a de nivel internacional. Equipamiento de captura de movimiento.",
+        "costoUpgrade": 170000,
+        "semanasConstruccion": 7,
+        "bonificaciones": { "pcsBonus": 11, "vinculoBonus": 3, "estresMejora": 3 }
+      }
+    ]
+  },
+  {
+    "id": "vestuarioPro",
+    "nombre": "Vestuario Profesional",
+    "descripcion": "Instalaciones de recuperación: piscina, sauna, baños de contraste. Mejora la recuperación de fatiga post-entrenamiento.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Vestuarios individuales limpios. Ducha caliente garantizada.",
+        "costoUpgrade": 8000,
+        "semanasConstruccion": 1,
+        "bonificaciones": { "recuperacionBonus": 2 }
+      },
+      {
+        "descripcion": "Sauna y zona de estiramiento. El ritual de recuperación se convierte en hábito.",
+        "costoUpgrade": 22000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "recuperacionBonus": 5, "estresMejora": 2 }
+      },
+      {
+        "descripcion": "Piscina de recuperación, crioterapia y baños de contraste.",
+        "costoUpgrade": 55000,
+        "semanasConstruccion": 4,
+        "bonificaciones": { "recuperacionBonus": 9, "estresMejora": 3, "lesionRiesgoReduccion": 0.05 }
+      },
+      {
+        "descripcion": "Centro de recuperación de élite. Flotación sensorial, masaje deportivo incluido.",
+        "costoUpgrade": 110000,
+        "semanasConstruccion": 6,
+        "bonificaciones": { "recuperacionBonus": 14, "estresMejora": 5, "lesionRiesgoReduccion": 0.08 }
+      }
+    ]
+  },
+  {
+    "id": "departamentoPR",
+    "nombre": "Departamento de PR",
+    "descripcion": "Gestión de la imagen pública del club. Atrae sponsors, mejora la reputación mediática y facilita las relaciones con federaciones.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Presencia básica en redes. Un voluntario gestiona las publicaciones.",
+        "costoUpgrade": 10000,
+        "semanasConstruccion": 1,
+        "bonificaciones": { "ingresoSemanal": 150 }
+      },
+      {
+        "descripcion": "Community manager a tiempo parcial. Cobertura de competiciones.",
+        "costoUpgrade": 25000,
+        "semanasConstruccion": 2,
+        "bonificaciones": { "ingresoSemanal": 350 }
+      },
+      {
+        "descripcion": "Agente de prensa dedicado. Relaciones con medios especializados y patrocinadores.",
+        "costoUpgrade": 55000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "ingresoSemanal": 700 }
+      },
+      {
+        "descripcion": "Departamento completo. Gestión de marca, relaciones institucionales, activaciones de sponsor.",
+        "costoUpgrade": 110000,
+        "semanasConstruccion": 5,
+        "bonificaciones": { "ingresoSemanal": 1400 }
+      }
+    ]
+  },
+  {
+    "id": "academiaJunior",
+    "nombre": "Academia Junior",
+    "descripcion": "Programa de detección y formación de talento joven. Genera ingresos y puede producir futuras patinadores para el club.",
+    "niveles": [
+      null,
+      {
+        "descripcion": "Clases grupales los fines de semana. Diez plazas. Nivel iniciación.",
+        "costoUpgrade": 15000,
+        "semanasConstruccion": 3,
+        "bonificaciones": { "ingresoSemanal": 200 }
+      },
+      {
+        "descripcion": "Programa estructurado con evaluaciones trimestrales. Veinte patinadores en seguimiento.",
+        "costoUpgrade": 35000,
+        "semanasConstruccion": 4,
+        "bonificaciones": { "ingresoSemanal": 450 }
+      },
+      {
+        "descripcion": "Academia reconocida por la federación. Pipeline de captación de talento activo.",
+        "costoUpgrade": 75000,
+        "semanasConstruccion": 6,
+        "bonificaciones": { "ingresoSemanal": 900 }
+      },
+      {
+        "descripcion": "Centro de formación de referencia. Las mejores promesas del país buscan entrenar aquí.",
+        "costoUpgrade": 150000,
+        "semanasConstruccion": 8,
+        "bonificaciones": { "ingresoSemanal": 1800 }
+      }
+    ]
+  }
+]
