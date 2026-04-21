@@ -59,6 +59,11 @@ export interface GameClock {
   phase: SeasonPhase
 }
 
-// ─── skater domain ────────────────────────────────────────────────────────────
+// ─── domain modules ───────────────────────────────────────────────────────────
+// single entry point: import everything from '@/types'
 
 export * from './skater'
+export * from './coach'
+export * from './club'
+export * from './season'
+export * from './program'
