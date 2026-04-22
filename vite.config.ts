@@ -13,7 +13,8 @@ export default defineConfig({
 
   build: {
     target: 'es2022',
-    sourcemap: true,
+    // 'hidden' produces maps for Sentry/debug without linking them in the public bundle
+    sourcemap: 'hidden',
     // split vendor chunks so game code doesn't invalidate react/router cache
     rollupOptions: {
       output: {

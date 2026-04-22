@@ -27,11 +27,15 @@ export const useEventStore = create<EventStoreState>()(
           console.log(`[${new Date().toISOString()}] ${event}`, payload)
         }
         bus.emit(event, payload)
-        set(
-          { emissionCount: { ...emissionCount, [event]: (emissionCount[event] ?? 0) + 1 } },
-          false,
-          `events/emit:${event}`,
-        )
+        // emissionCount is a dev-only aid; writing on every emit in prod churns
+        // references for any subscriber (re-renders, devtools noise) with no benefit
+        if (debugEvents) {
+          set(
+            { emissionCount: { ...emissionCount, [event]: (emissionCount[event] ?? 0) + 1 } },
+            false,
+            `events/emit:${event}`,
+          )
+        }
       },
 
       on: (event, handler) => {

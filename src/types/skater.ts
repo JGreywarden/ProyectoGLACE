@@ -897,41 +897,59 @@ export const TRAITS_BY_ID = Object.fromEntries(
 
 // ─── runtime validation ───────────────────────────────────────────────────────
 
-function isFiniteNumber(v: unknown): v is number {
-  return typeof v === 'number' && Number.isFinite(v)
-}
+import {
+  isFiniteNumber,
+  isInRange,
+  isNonNegative,
+  isPlainObject,
+  hasUnitScoreFields,
+} from '@/utils/validation'
 
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v)
-}
+// psychological attributes tolerate negative values: presionCompetitiva
+// is signed per GDD. autoexigencia is 0–100. split the checks accordingly.
+const PSYCHO_UNIT_KEYS = ['confianza', 'resistenciaMental', 'motivacionIntrinseca', 'autoexigencia'] as const
+const TECHNICAL_KEYS   = ['saltos', 'giros', 'secuenciaDePasos', 'amplitudLinea'] as const
+const WEEKLY_UNIT_KEYS = ['vinculo', 'fatigaAcumulada', 'estres'] as const
 
-function hasNumberFields(obj: Record<string, unknown>, keys: readonly string[]): boolean {
-  return keys.every(k => isFiniteNumber(obj[k]))
-}
-
-/** type guard for complete SkaterData — validates shape and numeric fields */
+/**
+ * type guard for complete SkaterData.
+ * validates shape, numeric finiteness, and domain ranges (0–100 where applicable).
+ * reject anything that would cause the competition engine to produce NaN.
+ */
 export function validateSkaterData(data: unknown): data is SkaterData {
   if (!isPlainObject(data)) return false
   if (typeof data['id'] !== 'string') return false
   if (typeof data['name'] !== 'string') return false
-  if (!isFiniteNumber(data['age'])) return false
+  if (!isInRange(data['age'], 0, 120)) return false
   if (typeof data['nationality'] !== 'string') return false
 
   if (!isPlainObject(data['technical'])) return false
-  if (!hasNumberFields(data['technical'], ['saltos', 'giros', 'secuenciaDePasos', 'amplitudLinea'])) return false
+  if (!hasUnitScoreFields(data['technical'], TECHNICAL_KEYS)) return false
 
   if (!isPlainObject(data['psychological'])) return false
-  if (!hasNumberFields(data['psychological'], ['confianza', 'resistenciaMental', 'presionCompetitiva', 'motivacionIntrinseca', 'autoexigencia'])) return false
+  if (!hasUnitScoreFields(data['psychological'], PSYCHO_UNIT_KEYS)) return false
+  // presionCompetitiva is signed: -100 to +100
+  if (!isInRange(data['psychological']['presionCompetitiva'], -100, 100)) return false
 
   if (!isPlainObject(data['physical'])) return false
-  if (!hasNumberFields(data['physical'], ['techosBiologico', 'historialLesiones', 'velocidadRecuperacion'])) return false
+  if (!isInRange(data['physical']['techosBiologico'],       0, 100)) return false
+  if (!isInRange(data['physical']['historialLesiones'],     0, 100)) return false
+  if (!isInRange(data['physical']['velocidadRecuperacion'], 0, 100)) return false
 
   if (!Array.isArray(data['traits'])) return false
 
   const ws = data['weeklyState']
   if (!isPlainObject(ws)) return false
-  if (!hasNumberFields(ws, ['vinculo', 'fatigaAcumulada', 'estres', 'semanasEntrenadas'])) return false
+  if (!hasUnitScoreFields(ws, WEEKLY_UNIT_KEYS)) return false
+  if (!isNonNegative(ws['semanasEntrenadas'])) return false
   if (!('currentInjury' in ws)) return false
+  const injury = ws['currentInjury']
+  if (injury !== null) {
+    if (!isPlainObject(injury)) return false
+    if (!isNonNegative(injury['injuredAtWeek'])) return false
+    if (!isNonNegative(injury['recoveryWeeksTotal'])) return false
+    if (!isNonNegative(injury['recoveryWeeksRemaining'])) return false
+  }
 
   const retiredAt = data['retiredAt']
   if (retiredAt !== null && !isFiniteNumber(retiredAt)) return false

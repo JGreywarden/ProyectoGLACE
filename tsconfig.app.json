@@ -16,6 +16,9 @@
     /* react */
     "jsx": "react-jsx",
 
+    /* test globals + jest-dom matchers */
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
+
     /* strict */
     "strict": true,
     "noUnusedLocals": true,

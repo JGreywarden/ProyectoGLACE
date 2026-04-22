@@ -29,5 +29,32 @@ export function GameLayout() {
     }
   }, [blocker])
 
+  // native-back defense: useBlocker is unreliable on mobile Safari (swipe gesture)
+  // and deep-link entries. Pushing a duplicate history entry + re-pushing on popstate
+  // neutralizes the browser back button while active-game is mounted.
+  useEffect(() => {
+    if (!isActiveGame) return
+
+    const path = window.location.pathname + window.location.search
+    window.history.pushState(null, '', path)
+
+    const onPopState = () => {
+      window.history.pushState(null, '', path)
+    }
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      // some browsers still require returnValue for the prompt to show
+      e.returnValue = ''
+    }
+
+    window.addEventListener('popstate',     onPopState)
+    window.addEventListener('beforeunload', onBeforeUnload)
+
+    return () => {
+      window.removeEventListener('popstate',     onPopState)
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    }
+  }, [isActiveGame])
+
   return <Outlet />
 }

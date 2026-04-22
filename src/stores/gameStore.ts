@@ -50,7 +50,19 @@ interface GameStoreState {
   setCurrentSeason:   (season: SeasonData | null) => void
   setIsFirstSession:  (value: boolean) => void
   setSessionSummary:  (summary: SessionSummary | null) => void
+  /** atomic cross-entity update: merges all patches in a single set() so no
+   *  intermediate render can observe inconsistent state between skater/coach/club/season */
+  applyWeekTransition: (patch: WeekTransitionPatch) => void
 }
+
+export interface WeekTransitionPatch {
+  skater?: Partial<SkaterData>
+  coach?:  Partial<CoachData>
+  club?:   Partial<ClubData>
+  season?: Partial<SeasonData>
+}
+
+const HISTORY_MAX = 50
 
 export const useGameStore = create<GameStoreState>()(
   devtools(
@@ -72,8 +84,13 @@ export const useGameStore = create<GameStoreState>()(
             `Transición ilegal: ${currentState} → ${newState}. Permitidas: [${allowed.join(', ') || '—'}]`,
           )
         }
+        // cap history to last HISTORY_MAX entries — not serialized in saves so
+        // truncation is observational-only; prevents unbounded growth in long sessions
+        const nextHistory = stateHistory.length >= HISTORY_MAX
+          ? [...stateHistory.slice(-(HISTORY_MAX - 1)), newState]
+          : [...stateHistory, newState]
         set(
-          { currentState: newState, stateHistory: [...stateHistory, newState] },
+          { currentState: newState, stateHistory: nextHistory },
           false,
           'game/changeState',
         )
@@ -85,6 +102,16 @@ export const useGameStore = create<GameStoreState>()(
       setCurrentSeason:  (season)  => set({ currentSeason: season },   false, 'game/setCurrentSeason'),
       setIsFirstSession: (value)   => set({ isFirstSession: value },   false, 'game/setIsFirstSession'),
       setSessionSummary: (summary) => set({ sessionSummary: summary }, false, 'game/setSessionSummary'),
+
+      applyWeekTransition: (patch) => {
+        const { currentSkater, currentCoach, currentClub, currentSeason } = get()
+        const next: Partial<GameStoreState> = {}
+        if (patch.skater && currentSkater) next.currentSkater = { ...currentSkater, ...patch.skater }
+        if (patch.coach  && currentCoach)  next.currentCoach  = { ...currentCoach,  ...patch.coach  }
+        if (patch.club   && currentClub)   next.currentClub   = { ...currentClub,   ...patch.club   }
+        if (patch.season && currentSeason) next.currentSeason = { ...currentSeason, ...patch.season }
+        set(next, false, 'game/applyWeekTransition')
+      },
     }),
     { name: 'glace/game' },
   ),
