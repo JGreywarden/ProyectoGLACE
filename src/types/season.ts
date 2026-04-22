@@ -55,6 +55,8 @@ export interface PCSBreakdown {
 
 /** outcome of a single competition appearance */
 export interface CompetitionResult {
+  /** stable unique id; canonical format `${skaterId}-s${temporada}w${semana}` */
+  id:                string
   skaterId:          string
   semana:            number
   nombreCompeticion: string
@@ -140,19 +142,55 @@ export function getTotalScore(result: CompetitionResult): number {
   return result.tes + result.pcs - result.deducciones
 }
 
+/** canonical id for a CompetitionResult — stable across reloads */
+export function makeCompetitionResultId(
+  skaterId: string,
+  temporada: number,
+  semana: number,
+): string {
+  return `${skaterId}-s${temporada}w${semana}`
+}
+
 // ─── runtime validation ───────────────────────────────────────────────────────
 
-/** type guard for complete SeasonData */
+import { isIntegerInRange, isInteger, isPlainObject, isFiniteNumber } from '@/utils/validation'
+
+/** type guard for complete SeasonData — validates ranges (semana 1–30) */
 export function validateSeasonData(data: unknown): data is SeasonData {
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false
-  const d = data as Record<string, unknown>
+  if (!isPlainObject(data)) return false
 
-  if (typeof d['semanaActual'] !== 'number') return false
-  if (typeof d['faseActual'] !== 'string') return false
-  if (typeof d['temporadaNumero'] !== 'number') return false
-  if (!Array.isArray(d['calendario'])) return false
-  if (!Array.isArray(d['resultadosTemporada'])) return false
-  if (!Array.isArray(d['historialSemanas'])) return false
+  if (!isIntegerInRange(data['semanaActual'], 1, 30)) return false
+  if (typeof data['faseActual'] !== 'string') return false
+  if (!isInteger(data['temporadaNumero']) || (data['temporadaNumero'] as number) < 1) return false
+  if (!Array.isArray(data['calendario'])) return false
+  if (!Array.isArray(data['resultadosTemporada'])) return false
+  if (!Array.isArray(data['historialSemanas'])) return false
 
+  return true
+}
+
+/**
+ * type guard for a single CompetitionResult entry.
+ * every finite numeric field is checked; id must be non-empty.
+ */
+export function validateCompetitionResult(data: unknown): data is CompetitionResult {
+  if (!isPlainObject(data)) return false
+  if (typeof data['id'] !== 'string' || data['id'].length === 0) return false
+  if (typeof data['skaterId'] !== 'string') return false
+  if (!isIntegerInRange(data['semana'], 1, 30)) return false
+  if (typeof data['nombreCompeticion'] !== 'string') return false
+  if (typeof data['tipo'] !== 'string') return false
+
+  if (!isFiniteNumber(data['tes'])) return false
+  if (!isFiniteNumber(data['pcs'])) return false
+  if (!isFiniteNumber(data['total'])) return false
+  if (!isFiniteNumber(data['deducciones'])) return false
+  if (!isInteger(data['posicion']) || (data['posicion'] as number) < 1) return false
+  if (!isInteger(data['caidas']) || (data['caidas'] as number) < 0) return false
+
+  if (!isPlainObject(data['pcsDetalle'])) return false
+  for (const k of ['sk', 'tr', 'pe', 'co', 'in']) {
+    if (!isFiniteNumber((data['pcsDetalle'] as Record<string, unknown>)[k])) return false
+  }
   return true
 }

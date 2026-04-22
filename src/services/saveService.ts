@@ -1,10 +1,12 @@
-// save service — pure functions for game persistence via localStorage
+// save service — pure functions for game persistence via safeStorage
 // no React, no Zustand; call from saveStore.ts
 
-import type { SkaterData } from '@/types/skater'
-import type { CoachData } from '@/types/coach'
-import type { ClubData } from '@/types/club'
-import type { SeasonData, CompetitionResult } from '@/types/season'
+import { type SkaterData, validateSkaterData } from '@/types/skater'
+import { type CoachData,  validateCoachData }  from '@/types/coach'
+import { type ClubData,   validateClubData }   from '@/types/club'
+import { type SeasonData, type CompetitionResult, validateSeasonData } from '@/types/season'
+import { safeStorage } from '@/utils/safeStorage'
+import type { NarrativeEvent } from '@/services/dataService'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -48,6 +50,8 @@ export interface SaveFile {
   narrativeFlags:  Record<string, boolean | number | string>
   dialogueHistory: DialogueLine[]
   emittedEvents:   string[]
+  /** full bodies of Claude-generated events — cached so reloads restore them */
+  generatedEvents: NarrativeEvent[]
 }
 
 /** lightweight summary for save-slot UI — extracted without full validation */
@@ -62,9 +66,21 @@ export interface SaveMetadata {
 export interface SaveResult {
   ok:        boolean
   sizeBytes: number
-  error?:    'quota_exceeded' | 'serialization_error'
+  error?:    'quota_exceeded' | 'serialization_error' | 'storage_unavailable'
   /** present when save size exceeds SIZE_WARN_BYTES */
   warning?:  'approaching_limit'
+}
+
+/** return value of load() — differentiates why a slot could not be restored */
+export type LoadReason =
+  | 'ok'
+  | 'not_found'
+  | 'corrupt'
+  | 'storage_unavailable'
+
+export interface LoadResult {
+  file:   SaveFile | null
+  reason: LoadReason
 }
 
 /** narrative summary shown on the /sesion resume screen */
@@ -87,6 +103,7 @@ export interface GameStateSnapshot {
   narrativeFlags:  Record<string, boolean | number | string>
   dialogueHistory: DialogueLine[]
   emittedEvents:   string[]
+  generatedEvents: NarrativeEvent[]
 }
 
 // ─── internal helpers ─────────────────────────────────────────────────────────
@@ -107,6 +124,7 @@ function buildSaveFile(snapshot: GameStateSnapshot): SaveFile {
     narrativeFlags:  snapshot.narrativeFlags,
     dialogueHistory: snapshot.dialogueHistory,
     emittedEvents:   snapshot.emittedEvents,
+    generatedEvents: snapshot.generatedEvents,
   }
 }
 
@@ -146,6 +164,10 @@ function formatPosicion(pos: number): string {
  * warns (but still saves) if the payload exceeds SIZE_WARN_BYTES.
  */
 export function save(slot: SaveSlot, snapshot: GameStateSnapshot): SaveResult {
+  if (!safeStorage.available) {
+    return { ok: false, sizeBytes: 0, error: 'storage_unavailable' }
+  }
+
   let json: string
   try {
     json = JSON.stringify(buildSaveFile(snapshot))
@@ -156,33 +178,40 @@ export function save(slot: SaveSlot, snapshot: GameStateSnapshot): SaveResult {
   const sizeBytes = estimateSize(json)
   const warning: SaveResult['warning'] = sizeBytes > SIZE_WARN_BYTES ? 'approaching_limit' : undefined
 
-  // backup before overwrite — ignore failure (disk full edge case)
-  const existing = localStorage.getItem(SAVE_KEYS[slot])
-  if (existing) {
-    try { localStorage.setItem(BACKUP_KEYS[slot], existing) } catch { /* continue */ }
-  }
+  // backup before overwrite — the previous primary becomes the new backup
+  const existing = safeStorage.get(SAVE_KEYS[slot])
+  if (existing) safeStorage.set(BACKUP_KEYS[slot], existing)
 
-  try {
-    localStorage.setItem(SAVE_KEYS[slot], json)
+  if (safeStorage.set(SAVE_KEYS[slot], json)) {
     return { ok: true, sizeBytes, ...(warning ? { warning } : {}) }
-  } catch {
-    return { ok: false, sizeBytes, error: 'quota_exceeded', ...(warning ? { warning } : {}) }
   }
+  return { ok: false, sizeBytes, error: 'quota_exceeded', ...(warning ? { warning } : {}) }
 }
 
 /**
  * parses and validates the save at the given slot.
  * falls back to the backup if the primary slot is missing or corrupt.
+ * returns LoadResult with a reason code — callers should surface `corrupt`
+ * to the user instead of treating it as an empty slot.
  */
-export function load(slot: SaveSlot): SaveFile | null {
-  const primary = localStorage.getItem(SAVE_KEYS[slot])
+export function load(slot: SaveSlot): LoadResult {
+  if (!safeStorage.available) return { file: null, reason: 'storage_unavailable' }
+
+  const primary = safeStorage.get(SAVE_KEYS[slot])
   if (primary) {
     const parsed = tryParse(primary)
-    if (parsed) return parsed
+    if (parsed) return { file: parsed, reason: 'ok' }
+    console.error(`saveService: slot ${slot} primary corrupt — falling back to backup`)
   }
-  const backup = localStorage.getItem(BACKUP_KEYS[slot])
-  if (backup) return tryParse(backup)
-  return null
+  const backup = safeStorage.get(BACKUP_KEYS[slot])
+  if (backup) {
+    const parsed = tryParse(backup)
+    if (parsed) return { file: parsed, reason: 'ok' }
+    console.error(`saveService: slot ${slot} backup also corrupt`)
+    return { file: null, reason: 'corrupt' }
+  }
+  if (primary) return { file: null, reason: 'corrupt' }
+  return { file: null, reason: 'not_found' }
 }
 
 /**
@@ -190,8 +219,9 @@ export function load(slot: SaveSlot): SaveFile | null {
  * used to populate the save-slot UI without loading the complete game state.
  */
 export function getMetadata(slot: SaveSlot): SaveMetadata | null {
+  if (!safeStorage.available) return null
   for (const key of [SAVE_KEYS[slot], BACKUP_KEYS[slot]]) {
-    const raw = localStorage.getItem(key)
+    const raw = safeStorage.get(key)
     if (!raw) continue
     try {
       const d = JSON.parse(raw) as Record<string, unknown>
@@ -213,9 +243,10 @@ export function getMetadata(slot: SaveSlot): SaveMetadata | null {
 
 /** removes both the primary save and its backup; returns true if the slot existed */
 export function deleteSave(slot: SaveSlot): boolean {
-  const existed = localStorage.getItem(SAVE_KEYS[slot]) !== null
-  localStorage.removeItem(SAVE_KEYS[slot])
-  localStorage.removeItem(BACKUP_KEYS[slot])
+  if (!safeStorage.available) return false
+  const existed = safeStorage.get(SAVE_KEYS[slot]) !== null
+  safeStorage.remove(SAVE_KEYS[slot])
+  safeStorage.remove(BACKUP_KEYS[slot])
   return existed
 }
 
@@ -254,8 +285,9 @@ export function generateSessionSummary(save: SaveFile): SessionSummary {
 
 /**
  * normalizes a raw parsed object into a valid SaveFile.
+ * each non-null entity is validated before being accepted — any failure throws
+ * so that tryParse() falls back to the backup.
  * extend this function to handle format migrations when saveVersion increases.
- * throws if the data cannot be recognized as any supported version.
  */
 export function migrateSave(data: unknown): SaveFile {
   if (!isSaveFile(data)) {
@@ -263,19 +295,37 @@ export function migrateSave(data: unknown): SaveFile {
   }
   const d = data as Record<string, unknown>
 
+  const skater = d['skater'] ?? null
+  if (skater !== null && !validateSkaterData(skater)) {
+    throw new Error('migrateSave: skater inválido (fuera de rango o malformado)')
+  }
+  const coach = d['coach'] ?? null
+  if (coach !== null && !validateCoachData(coach)) {
+    throw new Error('migrateSave: coach inválido (fuera de rango o malformado)')
+  }
+  const club = d['club'] ?? null
+  if (club !== null && !validateClubData(club)) {
+    throw new Error('migrateSave: club inválido (fuera de rango o malformado)')
+  }
+  const season = d['season'] ?? null
+  if (season !== null && !validateSeasonData(season)) {
+    throw new Error('migrateSave: season inválida (fuera de rango o malformada)')
+  }
+
   // v1 → current: fill in defaults for any fields added after initial release
   return {
     saveVersion:     1,
-    fechaGuardado:   typeof d['fechaGuardado'] === 'string' ? d['fechaGuardado'] : new Date().toISOString(),
+    fechaGuardado:   typeof d['fechaGuardado']  === 'string'  ? d['fechaGuardado']  : new Date().toISOString(),
     isFirstSession:  typeof d['isFirstSession'] === 'boolean' ? d['isFirstSession'] : false,
-    skater:          (d['skater']  as SkaterData  | null) ?? null,
-    coach:           (d['coach']   as CoachData   | null) ?? null,
-    club:            (d['club']    as ClubData    | null) ?? null,
-    season:          (d['season']  as SeasonData  | null) ?? null,
+    skater:          skater as SkaterData | null,
+    coach:           coach  as CoachData  | null,
+    club:            club   as ClubData   | null,
+    season:          season as SeasonData | null,
     narrativeFlags:  (typeof d['narrativeFlags'] === 'object' && d['narrativeFlags'] !== null
       ? d['narrativeFlags'] as Record<string, boolean | number | string>
       : {}),
-    dialogueHistory: Array.isArray(d['dialogueHistory']) ? (d['dialogueHistory'] as DialogueLine[]) : [],
-    emittedEvents:   Array.isArray(d['emittedEvents'])   ? (d['emittedEvents']   as string[])       : [],
+    dialogueHistory: Array.isArray(d['dialogueHistory']) ? (d['dialogueHistory'] as DialogueLine[])   : [],
+    emittedEvents:   Array.isArray(d['emittedEvents'])   ? (d['emittedEvents']   as string[])         : [],
+    generatedEvents: Array.isArray(d['generatedEvents']) ? (d['generatedEvents'] as NarrativeEvent[]) : [],
   }
 }

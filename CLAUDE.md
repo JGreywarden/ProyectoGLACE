@@ -375,3 +375,56 @@ Del GDD cap. 19 — en este orden:
 4. El motor de competición va en **Web Worker desde el primer día** — nunca en el hilo principal.
 5. Cada nueva función de dominio (GOE, TES, vínculo): **test primero**.
 6. Los componentes React no contienen lógica de negocio: solo llaman a funciones de `service.ts` o al store y renderizan el resultado.
+7. Toda entidad persistida pasa por su `validateXxxData` **antes** de entrar a un store. Nunca usar `as` para saltarse la validación.
+8. Todo acceso a `localStorage` pasa por `@/utils/safeStorage`. Nunca llamar al API nativo directamente.
+9. Errores inesperados se capturan en el `ErrorBoundary` raíz — no silenciar con `try/catch` locales que dejan el store en estado inconsistente.
+10. Cambios que tocan más de una entidad (skater + season, coach + club) se hacen con `gameStore.applyWeekTransition` u otra acción compuesta, **nunca** encadenando setters individuales.
+11. Al terminar cualquier tanda de trabajo solicitada durante una conversación, **preguntar al usuario** si quiere el flujo habitual de publicación: commit en la rama del worktree → push a GitHub → merge a `main` → push de `main` → borrado de la rama auxiliar (local y remota). No ejecutar ese flujo sin confirmación explícita.
+
+---
+
+## Patrones establecidos en Fase 0
+
+Estas pautas nacieron del endurecimiento de Fase 0 (abril 2026) y son **obligatorias** para todas las fases siguientes.
+
+### D1. Validación runtime en frontera
+
+Todo dato que entra desde `localStorage`, `fetch('/data/...')` o una llamada a API externa debe pasar por un `validateXxxData` antes de llegar a un store. Los validadores incluyen **rangos de dominio** (0–100 donde aplique, -100 a 100 para `presionCompetitiva`, 1–30 para `semanaActual`, 0–4 para nivel de instalación, suma ≈ 1.0 para `ramasCoach`, etc.), no solo forma estructural. Los casts (`as SkaterData`) están prohibidos fuera de los propios validadores.
+
+Helpers disponibles en `@/utils/validation`: `isFiniteNumber`, `isInRange`, `isIntegerInRange`, `isInteger`, `isNonNegative`, `isPlainObject`, `hasFiniteNumberFields`, `hasUnitScoreFields`, `approximatelyEquals`.
+
+### D2. Acceso a storage
+
+Nunca llamar directamente a `localStorage`. Usar siempre `@/utils/safeStorage`. Cualquier código que asuma que el storage está disponible debe consultar `safeStorage.available` primero. Los fallos de storage (Safari privado, cookies bloqueadas, iframe sin acceso) no deben romper el bootstrap: `safeStorage` devuelve `false`/`null` silenciosamente. La UI consulta `useSaveStore.storageAvailable` para mostrar un banner "Modo sin guardado".
+
+### D3. Atomicidad cross-store
+
+Cuando una acción de dominio toque más de una entidad (skater + season, coach + club, etc.), usar `gameStore.applyWeekTransition({ skater?, coach?, club?, season? })` o crear una acción compuesta equivalente en un solo `set(...)`. Nunca encadenar dos setters individuales para estado que debe verse consistente en un render; un re-render intermedio puede mostrar al jugador un estado imposible.
+
+### D4. Selectores de Zustand
+
+En componentes React, suscribirse **siempre a campos específicos**:
+
+```typescript
+// ✅
+const semana = useGameStore(s => s.currentSeason?.semanaActual)
+
+// ❌  — cualquier mutación dentro de currentSeason re-renderiza
+const season = useGameStore(s => s.currentSeason)
+```
+
+Para selecciones compuestas usar `useShallow` de `zustand/shallow`. Esto importa de verdad: `currentSeason.historialSemanas` y `resultadosTemporada` crecen hasta miles de entradas a lo largo de 15 temporadas.
+
+### D5. Tests con Vitest
+
+Todo `service.ts` nuevo se commitea junto con su `service.test.ts`. Los tests cubren: caso feliz, límites del dominio (0, 100, umbrales del GDD), inputs corruptos (NaN, undefined, negativos, strings en campos numéricos). No se abre PR de feature sin tests verdes.
+
+Comandos: `npm run test` (watch), `npm run test:run` (single-shot para CI), `npm run test:ui` (dashboard).
+
+### D6. Claude API en Fase 6 (nota preventiva)
+
+La clave de Claude API **nunca** va en `VITE_*` ni en el bundle del cliente — todas las `VITE_*` son públicas y quedan visibles en DevTools. La Fase 6 debe introducir una Vercel Function (`/api/generate-event`) que actúe de proxy: el cliente llama a la edge function y es ésta la que habla con `api.anthropic.com`.
+
+El tipo `NarrativeEvent` ya trae los campos opcionales que la generación necesitará (`source`, `generatedAt`, `promptSeed`, `model`) y `SaveFile.generatedEvents` persiste el cuerpo completo de los eventos generados. Los helpers `registerGeneratedEvent` / `hydrateGeneratedEvents` en `dataService` conectan la cache runtime con `getRandomEvent`. No hace falta tocar esas interfaces en Fase 6.
+
+El rewrite de `vercel.json` ya exceptúa `/api`, `/data` y `/assets` del SPA fallback.

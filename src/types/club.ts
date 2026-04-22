@@ -143,17 +143,39 @@ export function isUnderConstruction(
 
 // ─── runtime validation ───────────────────────────────────────────────────────
 
-/** type guard for complete ClubData */
-export function validateClubData(data: unknown): data is ClubData {
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false
-  const d = data as Record<string, unknown>
+import {
+  isFiniteNumber,
+  isIntegerInRange,
+  isPlainObject,
+  hasUnitScoreFields,
+} from '@/utils/validation'
 
-  if (typeof d['id'] !== 'string') return false
-  if (typeof d['nombre'] !== 'string') return false
-  if (typeof d['presupuestoReservas'] !== 'number') return false
-  if (!Array.isArray(d['instalaciones'])) return false
-  if (!Array.isArray(d['sponsors'])) return false
-  if (typeof d['reputacion'] !== 'object' || d['reputacion'] === null) return false
+const CLUB_REPUTATION_KEYS = [
+  'tecnica', 'artistica', 'pedagogica', 'institucional', 'mediatica',
+] as const
+
+/**
+ * type guard for complete ClubData.
+ * validates installation level 0–4 and reputation 0–100.
+ * presupuestoReservas can be negative (deuda) but must be finite.
+ */
+export function validateClubData(data: unknown): data is ClubData {
+  if (!isPlainObject(data)) return false
+
+  if (typeof data['id'] !== 'string') return false
+  if (typeof data['nombre'] !== 'string') return false
+  if (!isFiniteNumber(data['presupuestoReservas'])) return false
+
+  if (!Array.isArray(data['instalaciones'])) return false
+  for (const inst of data['instalaciones'] as unknown[]) {
+    if (!isPlainObject(inst)) return false
+    if (!isIntegerInRange(inst['nivel'], 0, 4)) return false
+  }
+
+  if (!Array.isArray(data['sponsors'])) return false
+
+  if (!isPlainObject(data['reputacion'])) return false
+  if (!hasUnitScoreFields(data['reputacion'], CLUB_REPUTATION_KEYS)) return false
 
   return true
 }

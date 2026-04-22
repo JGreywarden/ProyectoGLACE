@@ -68,6 +68,14 @@ export interface NarrativeEvent {
   descripcion: string
   condiciones: NarrativeEventConditions
   opciones:    NarrativeOption[]
+  /** origin of the event — 'static' for file-loaded, 'generated' for Claude-API output */
+  source?:      'static' | 'generated'
+  /** ISO-8601 timestamp when a generated event was produced */
+  generatedAt?: string
+  /** seed used to produce a generated event; enables reproducibility */
+  promptSeed?:  string
+  /** model id that produced a generated event (e.g. 'claude-opus-4-7') */
+  model?:       string
 }
 
 // ─── judge types ──────────────────────────────────────────────────────────────
@@ -201,6 +209,10 @@ export interface RandomEventConditions {
 const resolved = new Map<string, unknown[]>()
 const inFlight = new Map<string, Promise<unknown[]>>()
 
+// runtime-only store for Claude-API-generated events; not fetched from disk.
+// populated via registerGeneratedEvent() and consulted by getRandomEvent().
+const RUNTIME_GENERATED_KEY = 'runtime:generatedEvents'
+
 async function load<T>(path: string): Promise<T[]> {
   if (resolved.has(path)) return resolved.get(path) as T[]
 
@@ -264,7 +276,8 @@ export async function getEventsByType(type: EventType): Promise<NarrativeEvent[]
 
 /**
  * returns a random event whose conditions match the current game state.
- * searches across all event type files; skips files that fail to load.
+ * searches across all event type files + runtime-generated events;
+ * skips files that fail to load.
  */
 export async function getRandomEvent(
   conditions: RandomEventConditions,
@@ -272,10 +285,26 @@ export async function getRandomEvent(
   const results = await Promise.allSettled(
     EVENT_TYPES.map(type => load<NarrativeEvent>(EVENT_PATHS[type])),
   )
-  const all = results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
+  const staticEvents    = results.flatMap(r => r.status === 'fulfilled' ? r.value : [])
+  const generatedEvents = (resolved.get(RUNTIME_GENERATED_KEY) ?? []) as NarrativeEvent[]
+  const all = [...staticEvents, ...generatedEvents]
   const matching = all.filter(e => matchesConditions(e, conditions))
   if (!matching.length) return null
   return matching[Math.floor(Math.random() * matching.length)]
+}
+
+/**
+ * inserts a Claude-API-generated event into the runtime cache so it becomes
+ * eligible for getRandomEvent. persist these via SaveFile.generatedEvents.
+ */
+export function registerGeneratedEvent(event: NarrativeEvent): void {
+  const existing = (resolved.get(RUNTIME_GENERATED_KEY) ?? []) as NarrativeEvent[]
+  resolved.set(RUNTIME_GENERATED_KEY, [...existing, { ...event, source: 'generated' }])
+}
+
+/** rehydrate the runtime-generated cache from a loaded SaveFile */
+export function hydrateGeneratedEvents(events: NarrativeEvent[]): void {
+  resolved.set(RUNTIME_GENERATED_KEY, events)
 }
 
 /**

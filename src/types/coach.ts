@@ -115,26 +115,50 @@ export const DEFAULT_COACH_DATA: CoachData = {
 
 // ─── runtime validation ───────────────────────────────────────────────────────
 
-/** type guard for complete CoachData */
+import {
+  isInRange,
+  isNonNegative,
+  isPlainObject,
+  hasUnitScoreFields,
+  approximatelyEquals,
+} from '@/utils/validation'
+
+const REPUTATION_KEYS = [
+  'repResultados', 'repCuidado', 'repArtistica', 'repHonestidad', 'repInstitucional',
+] as const
+
+const LEGACY_NUMERIC_KEYS = ['patinadorFormados'] as const
+
+/** type guard for complete CoachData — validates reputations 0–100 and branch invariant */
 export function validateCoachData(data: unknown): data is CoachData {
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false
-  const d = data as Record<string, unknown>
+  if (!isPlainObject(data)) return false
 
-  if (typeof d['id'] !== 'string') return false
-  if (typeof d['name'] !== 'string') return false
-  if (!Array.isArray(d['flagsDecisionesFundacionales'])) return false
-  if (typeof d['temporadasCompletadas'] !== 'number') return false
+  if (typeof data['id'] !== 'string') return false
+  if (typeof data['name'] !== 'string') return false
+  if (!Array.isArray(data['flagsDecisionesFundacionales'])) return false
+  if (!isNonNegative(data['temporadasCompletadas'])) return false
 
-  const p = d['perfilInferido']
-  if (typeof p !== 'object' || p === null) return false
-  const profile = p as Record<string, unknown>
-  if (typeof profile['ramaTecnica'] !== 'number') return false
-  if (typeof profile['ramaPsicologica'] !== 'number') return false
-  if (typeof profile['ramaDirectiva'] !== 'number') return false
+  const profile = data['perfilInferido']
+  if (!isPlainObject(profile)) return false
+  if (!isInRange(profile['ramaTecnica'],     0, 1)) return false
+  if (!isInRange(profile['ramaPsicologica'], 0, 1)) return false
+  if (!isInRange(profile['ramaDirectiva'],   0, 1)) return false
+  const branchSum = profile['ramaTecnica'] + profile['ramaPsicologica'] + profile['ramaDirectiva']
+  if (!approximatelyEquals(branchSum, 1.0, 0.01)) return false
 
-  if (typeof d['arbolHabilidades'] !== 'object' || d['arbolHabilidades'] === null) return false
-  if (typeof d['legadoTotal'] !== 'object' || d['legadoTotal'] === null) return false
-  if (typeof d['reputacion'] !== 'object' || d['reputacion'] === null) return false
+  if (!isPlainObject(data['arbolHabilidades'])) return false
+
+  const legacy = data['legadoTotal']
+  if (!isPlainObject(legacy)) return false
+  for (const k of LEGACY_NUMERIC_KEYS) {
+    if (!isNonNegative(legacy[k])) return false
+  }
+  if (!Array.isArray(legacy['medallas'])) return false
+  if (!Array.isArray(legacy['eventosDefinitorios'])) return false
+
+  const reputation = data['reputacion']
+  if (!isPlainObject(reputation)) return false
+  if (!hasUnitScoreFields(reputation, REPUTATION_KEYS)) return false
 
   return true
 }

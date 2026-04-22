@@ -8,22 +8,30 @@ import {
   deleteSave,
   generateSessionSummary,
 } from '@/services/saveService'
-import type { SaveSlot, SaveMetadata, SaveResult, GameStateSnapshot } from '@/services/saveService'
+import type {
+  SaveSlot,
+  SaveMetadata,
+  SaveResult,
+  LoadResult,
+  LoadReason,
+  GameStateSnapshot,
+} from '@/services/saveService'
+import { safeStorage } from '@/utils/safeStorage'
 
-export type { SaveSlot, SaveMetadata, SaveResult } from '@/services/saveService'
+export type { SaveSlot, SaveMetadata, SaveResult, LoadResult, LoadReason } from '@/services/saveService'
 
 // ─── store interface ──────────────────────────────────────────────────────────
 
 interface SaveStoreState {
+  /** false when localStorage is blocked; UI should show "modo sin guardado" */
+  storageAvailable:  boolean
   /** cached metadata for each slot — populated on init and after each save/delete */
   slots:             Record<SaveSlot, SaveMetadata | null>
-  /** reads slot metadata from localStorage into Zustand state */
+  /** last load attempt's reason — consumed by MainMenu to show a specific message */
+  lastLoadReason:    LoadReason | null
   loadSlotMetadata:  () => void
-  /** serializes game state and writes to the given slot; returns full result */
   saveGame:          (slot: SaveSlot) => SaveResult
-  /** loads a save slot, restores game state, and generates the session summary */
-  loadGame:          (slot: SaveSlot) => boolean
-  /** removes primary save and backup for the given slot */
+  loadGame:          (slot: SaveSlot) => LoadResult
   deleteSlot:        (slot: SaveSlot) => void
 }
 
@@ -32,7 +40,9 @@ interface SaveStoreState {
 export const useSaveStore = create<SaveStoreState>()(
   devtools(
     (set) => ({
-      slots: { 1: null, 2: null, 3: null },
+      storageAvailable: safeStorage.available,
+      slots:            { 1: null, 2: null, 3: null },
+      lastLoadReason:   null,
 
       loadSlotMetadata: () => {
         set(
@@ -54,6 +64,7 @@ export const useSaveStore = create<SaveStoreState>()(
           narrativeFlags:  {},
           dialogueHistory: [],
           emittedEvents:   [],
+          generatedEvents: [],
         }
         const result = save(slot, snapshot)
         if (result.ok) {
@@ -67,9 +78,11 @@ export const useSaveStore = create<SaveStoreState>()(
       },
 
       loadGame: (slot) => {
-        const file = load(slot)
-        if (!file) return false
+        const result = load(slot)
+        set({ lastLoadReason: result.reason }, false, 'save/setLastLoadReason')
+        if (!result.file) return result
 
+        const file = result.file
         // bypass changeState validation — restoring a saved state is not a game logic transition
         useGameStore.setState({
           currentSkater:  file.skater,
@@ -81,7 +94,7 @@ export const useSaveStore = create<SaveStoreState>()(
           stateHistory:   [GameState.SESSION_RESUME],
           sessionSummary: generateSessionSummary(file),
         })
-        return true
+        return result
       },
 
       deleteSlot: (slot) => {
