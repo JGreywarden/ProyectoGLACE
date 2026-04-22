@@ -293,7 +293,9 @@ export function migrateSave(data: unknown): SaveFile {
   if (!isSaveFile(data)) {
     throw new Error('migrateSave: formato no reconocido o versión no soportada')
   }
-  const d = data as Record<string, unknown>
+  // isSaveFile narrowed `data` to SaveFile; cast via unknown to access raw fields
+  // (SaveFile has no index signature, so Record<string, unknown> requires a two-step cast)
+  const d = data as unknown as Record<string, unknown>
 
   const skater = d['skater'] ?? null
   if (skater !== null && !validateSkaterData(skater)) {
