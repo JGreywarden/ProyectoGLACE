@@ -46,8 +46,9 @@ const config: Config = {
         success: 'var(--c-success)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans:    ['DM Sans', 'system-ui', 'sans-serif'],
+        display: ['Cormorant Garamond', 'Georgia', 'serif'],
+        mono:    ['JetBrains Mono', 'monospace'],
       },
       // attribute bars, progress rings
       spacing: {

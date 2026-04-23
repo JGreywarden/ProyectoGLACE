@@ -20,13 +20,12 @@ const jumpsActivity: Activity = {
 
 describe('calcGain', () => {
   it('returns 0 when the skater is at potential', () => {
-    expect(calcGain(attr(80, 80), jumpsActivity)).toBe(0)
+    expect(calcGain(attr(80, 80), jumpsActivity, 'jump')).toBe(0)
   })
 
   it('returns 0 when the activity does not target this attribute', () => {
-    // caller passes an attribute not in targetAttributes — service returns 0
     const offTarget: Activity = { ...jumpsActivity, targetAttributes: ['spin'] }
-    expect(calcGain(attr(40, 80), offTarget)).toBe(0)
+    expect(calcGain(attr(40, 80), offTarget, 'jump')).toBe(0)
   })
 })
 
