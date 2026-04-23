@@ -1,21 +1,20 @@
-import type { AttributeKey } from '@/types'
+import type { TechnicalAttributes } from '@/types/skater'
 
-export type ActivityId =
-  | 'technical'   // jumps & spins
-  | 'choreography'
-  | 'conditioning'
-  | 'mentalCoach'
-  | 'rest'
-  | 'competition'  // replaces a slot during competition weeks
+export type ActivityId = 'tecnico' | 'fisico' | 'mental' | 'descanso' | 'ensayo' | 'dialogo'
 
 export interface Activity {
   id: ActivityId
   label: string
-  // which attributes this activity can improve
-  targetAttributes: AttributeKey[]
-  // base bond delta per session (-5 to +5)
-  bondDelta: number
-  // energy cost 0–100
+  targetAttributes: Array<keyof TechnicalAttributes>
+  fatigueDeltaMin: number
+  fatigueDeltaMax: number
+  stressDeltaMin: number
+  stressDeltaMax: number
+  bondDeltaMin: number
+  bondDeltaMax: number
+  injuryRiskDelta: number
+  cohesionDeltaMin: number
+  cohesionDeltaMax: number
   energyCost: number
 }
 
@@ -27,4 +26,24 @@ export interface TrainingSlot {
 export interface WeekSchedule {
   skaterId: string
   slots: TrainingSlot[]  // always length 5
+}
+
+export type TensionId =
+  | 'tecnico_vs_descanso'
+  | 'ensayo_vs_pre_competicion'
+  | 'dialogo_vs_hielo'
+  | 'carga_vs_pico'
+  | 'ensayo_vs_espontaneidad'
+  | 'paradoja_descanso_emocional'
+
+export interface WeekEffects {
+  attributeGains: Partial<Record<keyof TechnicalAttributes, number>>
+  fatigueDelta: number
+  stressDelta: number
+  bondDelta: number
+  cohesionDelta: number
+  // raw rng value 0–1; orchestrator compares against computed injury risk
+  injuryRoll: number
+  tensionsTriggered: TensionId[]
+  eventSeeds: string[]
 }
