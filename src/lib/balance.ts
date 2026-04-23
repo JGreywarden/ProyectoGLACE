@@ -158,6 +158,7 @@ export const FALL_DEDUCTION = 1.0
 // los elementos siguientes pierden un 12 % de GOE (factor 0.88)
 export const FIRST_FALL_GOE_PENALTY = 0.88
 
+
 // ─── 5. Motor PCS — Program Component Score ───────────────────────────────────
 
 // GDD cap. 5 — pesos de atributos fuente para cada componente del PCS (cada fila suma 1.0)
