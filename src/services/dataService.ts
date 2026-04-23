@@ -12,19 +12,19 @@ export type EventType =
   | 'decision_moral'
   | 'terceros'
   | 'cotidiano'
-  | 'logro'
+  | 'logro_compartido'
 
 const EVENT_TYPES: readonly EventType[] = [
-  'revelacion', 'crisis', 'decision_moral', 'terceros', 'cotidiano', 'logro',
+  'revelacion', 'crisis', 'decision_moral', 'terceros', 'cotidiano', 'logro_compartido',
 ]
 
 const EVENT_PATHS: Record<EventType, string> = {
-  revelacion:     '/data/events/revelacion.json',
-  crisis:         '/data/events/crisis.json',
-  decision_moral: '/data/events/decision_moral.json',
-  terceros:       '/data/events/terceros.json',
-  cotidiano:      '/data/events/cotidiano.json',
-  logro:          '/data/events/logro.json',
+  revelacion:      '/data/events/revelacion.json',
+  crisis:          '/data/events/crisis.json',
+  decision_moral:  '/data/events/decision_moral.json',
+  terceros:        '/data/events/terceros.json',
+  cotidiano:       '/data/events/cotidiano.json',
+  logro_compartido: '/data/events/logro_compartido.json',
 }
 
 // ─── narrative event types ────────────────────────────────────────────────────

@@ -5,8 +5,8 @@ const BASE_GAIN = 2
 const POTENTIAL_DAMPENING = 0.015  // gain slows as value approaches potential
 
 // calculate attribute gain for one session of an activity
-export function calcGain(attr: Attribute, activity: Activity): number {
-  if (!activity.targetAttributes.includes(attr as unknown as AttributeKey)) return 0
+export function calcGain(attr: Attribute, activity: Activity, key: AttributeKey): number {
+  if (!activity.targetAttributes.includes(key)) return 0
   const headroom = attr.potential - attr.value
   if (headroom <= 0) return 0
   // gain tapers off as value approaches potential
@@ -29,7 +29,7 @@ export function resolveWeekGains(
     for (const key of activity.targetAttributes) {
       const attr = attributes[key]
       if (!attr) continue
-      gains[key] = (gains[key] ?? 0) + calcGain(attr, activity)
+      gains[key] = (gains[key] ?? 0) + calcGain(attr, activity, key)
     }
   }
 
