@@ -1,4 +1,4 @@
 // public api for the training feature
-export type { ActivityId, Activity, TrainingSlot, WeekSchedule } from './types'
+export type { ActivityId, Activity, TrainingSlot, WeekSchedule, TensionId, WeekEffects } from './types'
 export { useTrainingStore } from './store'
-export { calcGain, resolveWeekGains } from './service'
+export { ACTIVITY_DEFINITIONS, calcGain, detectTensions, resolveWeekEffects } from './service'
