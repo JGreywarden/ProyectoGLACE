@@ -379,7 +379,7 @@ Del GDD cap. 19 — en este orden:
 8. Todo acceso a `localStorage` pasa por `@/utils/safeStorage`. Nunca llamar al API nativo directamente.
 9. Errores inesperados se capturan en el `ErrorBoundary` raíz — no silenciar con `try/catch` locales que dejan el store en estado inconsistente.
 10. Cambios que tocan más de una entidad (skater + season, coach + club) se hacen con `gameStore.applyWeekTransition` u otra acción compuesta, **nunca** encadenando setters individuales.
-11. Al terminar cualquier tanda de trabajo solicitada durante una conversación, **preguntar al usuario** si quiere el flujo habitual de publicación: commit en la rama del worktree → push a GitHub → merge a `main` → push de `main` → borrado de la rama auxiliar (local y remota). No ejecutar ese flujo sin confirmación explícita.
+11. Al terminar cualquier tanda de trabajo solicitada durante una conversación, **preguntar al usuario** si quiere el flujo habitual de publicación: commit en la rama del worktree → push a GitHub → PR + merge a `main` → **borrado solo de la rama remota** (`git push origin --delete <rama>` o `gh pr merge --delete-branch`). **No** borrar nunca la rama local ni el worktree: el usuario los conserva. No ejecutar el flujo sin confirmación explícita.
 
 ---
 

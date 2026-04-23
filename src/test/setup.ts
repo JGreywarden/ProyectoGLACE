@@ -1,13 +1,30 @@
 import '@testing-library/jest-dom'
+import { beforeEach } from 'vitest'
 
-// jsdom's localStorage doesn't always expose .clear() — provide a spec-compliant in-memory mock
-const _store: Record<string, string> = {}
-const localStorageMock: Storage = {
-  get length() { return Object.keys(_store).length },
-  key:        (i) => Object.keys(_store)[i] ?? null,
-  getItem:    (key) => Object.hasOwn(_store, key) ? _store[key] : null,
-  setItem:    (key, value) => { _store[key] = String(value) },
-  removeItem: (key) => { delete _store[key] },
-  clear:      () => { Object.keys(_store).forEach(k => { delete _store[k] }) },
+// Node 22+ ships a built-in `localStorage` proxy global that lacks Storage.prototype
+// methods (.clear, .key) and shadows jsdom's implementation. Replace both with a
+// plain Map-backed Storage shim so tests can exercise the full API.
+function makeStorageShim(): Storage {
+  const store = new Map<string, string>()
+  return {
+    get length() { return store.size },
+    clear()                { store.clear() },
+    key(i: number)         { return [...store.keys()][i] ?? null },
+    getItem(k: string)     { return store.has(k) ? store.get(k)! : null },
+    setItem(k: string, v: string) { store.set(k, String(v)) },
+    removeItem(k: string)  { store.delete(k) },
+  }
 }
-Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true, configurable: true })
+
+Object.defineProperty(globalThis, 'localStorage',   { value: makeStorageShim(), configurable: true, writable: true })
+Object.defineProperty(globalThis, 'sessionStorage', { value: makeStorageShim(), configurable: true, writable: true })
+if (typeof window !== 'undefined') {
+  Object.defineProperty(window, 'localStorage',   { value: globalThis.localStorage,   configurable: true, writable: true })
+  Object.defineProperty(window, 'sessionStorage', { value: globalThis.sessionStorage, configurable: true, writable: true })
+}
+
+// guarantee a clean slate between tests even if individual files forget to clear
+beforeEach(() => {
+  globalThis.localStorage.clear()
+  globalThis.sessionStorage.clear()
+})
