@@ -1,0 +1,29 @@
+[
+  {
+    "id": "lib_01",
+    "title": "Nocturne in E-flat (placeholder)",
+    "composer": "F. Chopin",
+    "url": "/assets/music/placeholder_01.mp3",
+    "genero": "clasica_piano",
+    "duracionSegundos": 260,
+    "licencia": "CC0"
+  },
+  {
+    "id": "lib_02",
+    "title": "Spiegel im Spiegel (placeholder)",
+    "composer": "A. Pärt",
+    "url": "/assets/music/placeholder_02.mp3",
+    "genero": "minimalista",
+    "duracionSegundos": 270,
+    "licencia": "CC0"
+  },
+  {
+    "id": "lib_03",
+    "title": "Adagio for Strings (placeholder)",
+    "composer": "S. Barber",
+    "url": "/assets/music/placeholder_03.mp3",
+    "genero": "clasica_orquestal",
+    "duracionSegundos": 255,
+    "licencia": "CC0"
+  }
+]
