@@ -133,9 +133,30 @@ export const GOE_WEIGHTS = {
   fatigueImpact:  0.03,
   // reducción de GOE por posición en el programa (0=primer elemento, 7=último)
   positionDecay:  0.15,
-  // modificación de GOE por punto de presionCompetitiva (puede ser positiva o negativa)
-  pressureWeight: 0.05,
+  // escala del efecto de presionCompetitiva sobre el GOE, por punto de presión tras normalizar a [-1,1]
+  pressureWeight: 0.5,
 } as const
+
+// GDD cap. 5 — factor por tipo de elemento que traduce GOE → TES añadido
+// TES_elem = dificultadBase * (1 + goe * factor). ISU real usa 0.1 para saltos triples.
+export const ELEMENT_GOE_TES_FACTOR: Readonly<Record<string, number>> = {
+  salto:                 0.10,
+  giro:                  0.10,
+  secuenciaPasos:        0.10,
+  secuenciaCoreografica: 0.05,
+  espiral:               0.10,
+} as const
+
+// GDD cap. 5 — umbral por debajo del cual un salto se considera caída
+// cuando el GOE final de un salto cae bajo este valor, cuenta como caída
+export const FALL_GOE_THRESHOLD = -3
+
+// GDD cap. 5 — deducción ISU por caída (1 pto por caída en senior)
+export const FALL_DEDUCTION = 1.0
+
+// GDD cap. 5 — penalización «Anna Muller»: tras la primera caída del programa,
+// los elementos siguientes pierden un 12 % de GOE (factor 0.88)
+export const FIRST_FALL_GOE_PENALTY = 0.88
 
 // ─── 5. Motor PCS — Program Component Score ───────────────────────────────────
 
@@ -151,11 +172,18 @@ export const PCS_ATTRIBUTE_WEIGHTS: Readonly<Record<string, Partial<Record<Attri
 
 // GDD cap. 5 — coeficiente ISU de cada componente PCS (programa libre senior)
 export const PCS_COMPONENT_COEFFICIENTS = {
-  SK: 1.0,
-  TR: 0.8,
-  PE: 1.0,
-  CO: 1.0,
-  IN: 1.0,
+  sk: 1.0,
+  tr: 0.8,
+  pe: 1.0,
+  co: 1.0,
+  in: 1.0,
+} as const
+
+// GDD cap. 5 — factor de programa ISU: PCS_total = sum_componentes * factor
+// corto: 2.0 · libre: 4.0 (senior)
+export const PCS_PROGRAM_FACTOR = {
+  corto: 2.0,
+  libre: 4.0,
 } as const
 
 // ─── 6. Varianza mental ───────────────────────────────────────────────────────
