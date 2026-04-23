@@ -168,6 +168,18 @@ export interface CompetitionData {
   montosPremio:   Record<string, number>  // posicion (string key) → euros
 }
 
+// ─── music library types ─────────────────────────────────────────────────────
+
+export interface MusicLibraryEntry {
+  id:               string
+  title:            string
+  composer:         string
+  url:              string
+  genero:           string
+  duracionSegundos: number
+  licencia:         string
+}
+
 // ─── skater profile (scouting only) ──────────────────────────────────────────
 
 export interface SkaterProfile {
@@ -330,6 +342,46 @@ export async function getInstallationData(id: InstallationId): Promise<Installat
   return all.find(i => i.id === id) ?? null
 }
 
+// ─── music library ────────────────────────────────────────────────────────────
+
+import { isFiniteNumber, isPlainObject } from '@/utils/validation'
+
+function isMusicLibraryEntry(v: unknown): v is MusicLibraryEntry {
+  if (!isPlainObject(v)) return false
+  return typeof v['id']               === 'string'
+      && typeof v['title']            === 'string'
+      && typeof v['composer']         === 'string'
+      && typeof v['url']              === 'string'
+      && typeof v['genero']           === 'string'
+      && typeof v['licencia']         === 'string'
+      && isFiniteNumber(v['duracionSegundos'])
+      && v['duracionSegundos'] > 0
+}
+
+/** validates a parsed music_library.json payload; returns null on any failure */
+export function validateMusicLibrary(data: unknown): MusicLibraryEntry[] | null {
+  if (!Array.isArray(data)) return null
+  if (!data.every(isMusicLibraryEntry)) return null
+  // narrow via cast at the boundary — entries individually validated above
+  return data as MusicLibraryEntry[]
+}
+
+/** returns the full music library, validated; returns [] on load or validation failure */
+export async function getMusicLibrary(): Promise<MusicLibraryEntry[]> {
+  try {
+    const raw = await load<unknown>('/data/music_library.json')
+    return validateMusicLibrary(raw) ?? []
+  } catch {
+    return []
+  }
+}
+
+/** finds a single library entry by id; null when not found or library failed to load */
+export async function getMusicLibraryEntry(id: string): Promise<MusicLibraryEntry | null> {
+  const all = await getMusicLibrary()
+  return all.find(e => e.id === id) ?? null
+}
+
 /**
  * fetches all static data files in parallel and populates the cache.
  * call during BOOT to avoid hitches on the first game week.
@@ -343,6 +395,7 @@ export async function preloadAll(): Promise<void> {
     '/data/installations.json',
     '/data/skaters.json',
     '/data/competitions.json',
+    '/data/music_library.json',
   ]
 
   const results = await Promise.allSettled(paths.map(path => load(path)))

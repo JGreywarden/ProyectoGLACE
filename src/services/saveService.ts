@@ -5,6 +5,7 @@ import { type SkaterData, validateSkaterData } from '@/types/skater'
 import { type CoachData,  validateCoachData }  from '@/types/coach'
 import { type ClubData,   validateClubData }   from '@/types/club'
 import { type SeasonData, type CompetitionResult, validateSeasonData } from '@/types/season'
+import { type ProgramData, validateProgramData } from '@/types/program'
 import { safeStorage } from '@/utils/safeStorage'
 import type { NarrativeEvent } from '@/services/dataService'
 
@@ -52,6 +53,8 @@ export interface SaveFile {
   emittedEvents:   string[]
   /** full bodies of Claude-generated events — cached so reloads restore them */
   generatedEvents: NarrativeEvent[]
+  /** confirmed programs per skater — both corto and libre across seasons */
+  confirmedPrograms: Record<string, ProgramData[]>
 }
 
 /** lightweight summary for save-slot UI — extracted without full validation */
@@ -104,6 +107,7 @@ export interface GameStateSnapshot {
   dialogueHistory: DialogueLine[]
   emittedEvents:   string[]
   generatedEvents: NarrativeEvent[]
+  confirmedPrograms: Record<string, ProgramData[]>
 }
 
 // ─── internal helpers ─────────────────────────────────────────────────────────
@@ -125,7 +129,32 @@ function buildSaveFile(snapshot: GameStateSnapshot): SaveFile {
     dialogueHistory: snapshot.dialogueHistory,
     emittedEvents:   snapshot.emittedEvents,
     generatedEvents: snapshot.generatedEvents,
+    confirmedPrograms: snapshot.confirmedPrograms,
   }
+}
+
+/**
+ * validates the confirmedPrograms map: every entry must be an array of valid
+ * ProgramData. Returns the data unchanged on success, throws on any failure.
+ */
+function validateConfirmedPrograms(raw: unknown): Record<string, ProgramData[]> {
+  if (raw === undefined || raw === null) return {}
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('migrateSave: confirmedPrograms debe ser un objeto')
+  }
+  const obj = raw as Record<string, unknown>
+  const out: Record<string, ProgramData[]> = {}
+  for (const [skaterId, list] of Object.entries(obj)) {
+    if (!Array.isArray(list)) {
+      throw new Error(`migrateSave: confirmedPrograms[${skaterId}] debe ser una lista`)
+    }
+    if (!list.every(validateProgramData)) {
+      throw new Error(`migrateSave: confirmedPrograms[${skaterId}] contiene un programa inválido`)
+    }
+    // each entry passed validateProgramData; the cast at the boundary is allowed
+    out[skaterId] = list as ProgramData[]
+  }
+  return out
 }
 
 /** minimal guard — just enough to reject completely invalid payloads */
@@ -329,5 +358,6 @@ export function migrateSave(data: unknown): SaveFile {
     dialogueHistory: Array.isArray(d['dialogueHistory']) ? (d['dialogueHistory'] as DialogueLine[])   : [],
     emittedEvents:   Array.isArray(d['emittedEvents'])   ? (d['emittedEvents']   as string[])         : [],
     generatedEvents: Array.isArray(d['generatedEvents']) ? (d['generatedEvents'] as NarrativeEvent[]) : [],
+    confirmedPrograms: validateConfirmedPrograms(d['confirmedPrograms']),
   }
 }

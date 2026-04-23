@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { useGameStore, GameState } from './gameStore'
+import { useProgramStore } from '@/features/program'
 import {
   save,
   load,
@@ -65,6 +66,7 @@ export const useSaveStore = create<SaveStoreState>()(
           dialogueHistory: [],
           emittedEvents:   [],
           generatedEvents: [],
+          confirmedPrograms: useProgramStore.getState().confirmedPrograms,
         }
         const result = save(slot, snapshot)
         if (result.ok) {
@@ -94,6 +96,7 @@ export const useSaveStore = create<SaveStoreState>()(
           stateHistory:   [GameState.SESSION_RESUME],
           sessionSummary: generateSessionSummary(file),
         })
+        useProgramStore.getState().hydrateConfirmedPrograms(file.confirmedPrograms)
         return result
       },
 

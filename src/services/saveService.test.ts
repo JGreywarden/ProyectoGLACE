@@ -4,8 +4,9 @@ import { DEFAULT_SKATER_DATA } from '@/types/skater'
 import { DEFAULT_COACH_DATA } from '@/types/coach'
 import { DEFAULT_CLUB_DATA } from '@/types/club'
 import { DEFAULT_SEASON_DATA } from '@/types/season'
+import { createDefaultProgram } from '@/features/program/service'
 
-function snapshot(): GameStateSnapshot {
+function snapshot(extra: Partial<GameStateSnapshot> = {}): GameStateSnapshot {
   return {
     currentSkater:   { ...DEFAULT_SKATER_DATA, id: 'sk1', name: 'Ana' },
     currentCoach:    { ...DEFAULT_COACH_DATA,  id: 'c1',  name: 'Eva' },
@@ -16,6 +17,8 @@ function snapshot(): GameStateSnapshot {
     dialogueHistory: [],
     emittedEvents:   [],
     generatedEvents: [],
+    confirmedPrograms: {},
+    ...extra,
   }
 }
 
@@ -96,6 +99,48 @@ describe('migrateSave validation', () => {
     })
     expect(file.skater).toBeNull()
     expect(file.generatedEvents).toEqual([])
+  })
+})
+
+describe('confirmedPrograms persistence', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('round-trip preserves confirmedPrograms with a valid corto program', () => {
+    const program = createDefaultProgram(
+      'corto',
+      'sk1',
+      1,
+      { sourceId: 'lib_01', title: 'Nocturne', duration: 260, tempo: null, genero: 'clasica_piano' },
+    )
+    const result = save(1, snapshot({ confirmedPrograms: { sk1: [program] } }))
+    expect(result.ok).toBe(true)
+
+    const { file, reason } = load(1)
+    expect(reason).toBe('ok')
+    expect(file?.confirmedPrograms.sk1).toHaveLength(1)
+    expect(file?.confirmedPrograms.sk1[0].id).toBe(program.id)
+    expect(file?.confirmedPrograms.sk1[0].elementos).toHaveLength(7)
+  })
+
+  it('migrateSave initializes confirmedPrograms to {} when missing (Fase 0 saves)', () => {
+    const file = migrateSave({
+      saveVersion:   1,
+      fechaGuardado: new Date().toISOString(),
+      skater: null, coach: null, club: null, season: null,
+      // confirmedPrograms field intentionally absent
+    })
+    expect(file.confirmedPrograms).toEqual({})
+  })
+
+  it('migrateSave rejects malformed confirmedPrograms entries', () => {
+    expect(() => migrateSave({
+      saveVersion:   1,
+      fechaGuardado: new Date().toISOString(),
+      skater: null, coach: null, club: null, season: null,
+      confirmedPrograms: { sk1: [{ id: 'broken', notAProgram: true }] },
+    })).toThrow(/confirmedPrograms/)
   })
 })
 
