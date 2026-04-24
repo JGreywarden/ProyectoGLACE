@@ -202,7 +202,18 @@ export function MENTAL_VARIANCE_SIGMA(resistenciaMental: number): number {
 // ─── 7. Economía ─────────────────────────────────────────────────────────────
 
 // GDD cap. 7 — premios ISU en USD por posición de podio (valores oficiales 2024)
+// escalas intermedias (NATIONAL, INTERNATIONAL, EUROPEAN, OLYMPIC) calibradas por prestigio
 export const ISU_PRIZE_MONEY = {
+  NATIONAL: {
+    1: 3_000,
+    2: 2_000,
+    3: 1_000,
+  },
+  INTERNATIONAL: {
+    1: 6_000,
+    2: 4_000,
+    3: 2_500,
+  },
   GP: {
     1: 12_000,
     2:  9_000,
@@ -210,6 +221,11 @@ export const ISU_PRIZE_MONEY = {
     4:  3_000,
     5:  1_800,
     6:    900,
+  },
+  EUROPEAN: {
+    1: 30_000,
+    2: 22_000,
+    3: 15_000,
   },
   GP_FINAL: {
     1: 25_000,
@@ -227,14 +243,33 @@ export const ISU_PRIZE_MONEY = {
     5: 12_000,
     6:  6_000,
   },
+  OLYMPIC: {
+    1: 100_000,
+    2:  75_000,
+    3:  50_000,
+  },
 } as const
 
 // GDD cap. 7 — coste base semanal de un patinador activo en moneda del juego
 // calibrado para que GP 1º ≈ 8 semanas de gastos (umbral estable)
 export const WEEKLY_EXPENSE_BASE = 1_500
 
+// GDD cap. 7 — subvención federativa base por semana (ajustada por reputacion.institucional)
+export const FEDERATION_GRANT_BASE_WEEKLY = 800
+
+// GDD cap. 7 — rango del multiplicador sobre la subvención federativa según reputacion.institucional (0-100)
+export const FEDERATION_GRANT_MULT_MIN = 0.5
+export const FEDERATION_GRANT_MULT_MAX = 1.5
+
+// GDD cap. 7 — mantenimiento semanal por nivel de instalación construida
+// acumulativo: una instalación nivel 3 cuesta 3× este valor por semana
+export const WEEKLY_INSTALLATION_MAINTENANCE_PER_LEVEL = 120
+
+// GDD cap. 7 — ventana de evaluación de cumplimiento para sponsors (semanas consecutivas)
+export const SPONSOR_REVIEW_WINDOW_WEEKS = 3
+
 // GDD cap. 7 — umbrales de presión financiera expresados como semanas de reserva
-// reserva = fondos_actuales / WEEKLY_EXPENSE_BASE
+// reserva = fondos_actuales / weeklyExpenses
 export const FINANCIAL_PRESSURE_THRESHOLDS = {
   stable:  8,   // > 8 semanas → sin presión
   mild:    4,   // 4-8 semanas → presión leve
@@ -244,3 +279,6 @@ export const FINANCIAL_PRESSURE_THRESHOLDS = {
 
 // GDD cap. 7 — estrés semanal adicional que genera la presión financiera visible
 export const PRESION_VISIBLE_STRESS_WEEKLY = 3
+
+// GDD cap. 7 — estrés semanal adicional en crisis financiera (más severo que visible)
+export const PRESION_CRISIS_STRESS_WEEKLY = 5
