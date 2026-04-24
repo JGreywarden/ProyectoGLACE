@@ -7,7 +7,9 @@
     "condiciones": {
       "minVinculo": 30,
       "minEstres": 65,
-      "rasgosActivos": ["perfeccionista"]
+      "rasgosActivos": [
+        "perfeccionista"
+      ]
     },
     "opciones": [
       {
@@ -17,7 +19,9 @@
           "vinculoDelta": 8,
           "estresDelta": -15,
           "fatigueDelta": -10,
-          "narrativeFlags": { "crisis_perfeccionismo_pausa": true }
+          "narrativeFlags": {
+            "crisis_perfeccionismo_pausa": true
+          }
         }
       },
       {
@@ -27,7 +31,9 @@
           "vinculoDelta": 3,
           "estresDelta": -5,
           "fatigueDelta": 5,
-          "narrativeFlags": { "crisis_perfeccionismo_compromiso": true }
+          "narrativeFlags": {
+            "crisis_perfeccionismo_compromiso": true
+          }
         }
       },
       {
@@ -37,7 +43,9 @@
           "vinculoDelta": -12,
           "estresDelta": 10,
           "fatigueDelta": 15,
-          "narrativeFlags": { "crisis_perfeccionismo_ignorada": true },
+          "narrativeFlags": {
+            "crisis_perfeccionismo_ignorada": true
+          },
           "rasgoRiesgo": "auto-exigencia-destructiva",
           "probabilidadMutacion": 0.35
         }
@@ -53,7 +61,10 @@
       "minVinculo": 20,
       "maxVinculo": 75,
       "minEstres": 50,
-      "faseTemporada": ["Pico", "Activacion"]
+      "faseTemporada": [
+        "Pico",
+        "Activacion"
+      ]
     },
     "opciones": [
       {
@@ -62,7 +73,9 @@
         "efectos": {
           "vinculoDelta": 12,
           "estresDelta": -8,
-          "narrativeFlags": { "lesion_confrontada_con_apertura": true }
+          "narrativeFlags": {
+            "lesion_confrontada_con_apertura": true
+          }
         }
       },
       {
@@ -71,7 +84,9 @@
         "efectos": {
           "vinculoDelta": 4,
           "fatigueDelta": -8,
-          "narrativeFlags": { "lesion_gestionada_en_silencio": true }
+          "narrativeFlags": {
+            "lesion_gestionada_en_silencio": true
+          }
         }
       },
       {
@@ -81,7 +96,9 @@
           "vinculoDelta": -6,
           "estresDelta": 8,
           "fatigueDelta": 10,
-          "narrativeFlags": { "lesion_ignorada_alto_riesgo": true },
+          "narrativeFlags": {
+            "lesion_ignorada_alto_riesgo": true
+          },
           "rasgoRiesgo": "cuerpo-fragil",
           "probabilidadMutacion": 0.25
         }
@@ -96,8 +113,13 @@
     "condiciones": {
       "maxVinculo": 60,
       "minEstres": 55,
-      "faseTemporada": ["Construccion", "Cierre"],
-      "flagsRequeridos": ["segunda_temporada_o_mas"]
+      "faseTemporada": [
+        "Construccion",
+        "Cierre"
+      ],
+      "flagsRequeridos": [
+        "segunda_temporada_o_mas"
+      ]
     },
     "opciones": [
       {
@@ -106,7 +128,9 @@
         "efectos": {
           "vinculoDelta": 15,
           "estresDelta": -12,
-          "narrativeFlags": { "dialogo_silencio_profundo": true }
+          "narrativeFlags": {
+            "dialogo_silencio_profundo": true
+          }
         }
       },
       {
@@ -115,7 +139,9 @@
         "efectos": {
           "vinculoDelta": 10,
           "estresDelta": -8,
-          "narrativeFlags": { "dialogo_memoria_origen": true }
+          "narrativeFlags": {
+            "dialogo_memoria_origen": true
+          }
         }
       },
       {
@@ -124,9 +150,235 @@
         "efectos": {
           "vinculoDelta": -18,
           "estresDelta": 5,
-          "narrativeFlags": { "crisis_quemado_ignorada": true },
+          "narrativeFlags": {
+            "crisis_quemado_ignorada": true
+          },
           "rasgoRiesgo": "quemado",
           "probabilidadMutacion": 0.45
+        }
+      }
+    ]
+  },
+  {
+    "id": "crisis_redes_viral_01",
+    "tipo": "crisis",
+    "titulo": "El vídeo que no se borra",
+    "descripcion": "Un comentarista anónimo ha subido un montaje con sus caídas de las últimas dos temporadas. Lleva ciento cincuenta mil visualizaciones en seis horas. Ella no lo ha abierto todavía pero alguien del club ya se lo ha mencionado. La encuentras sentada en el pasillo del hotel con el teléfono apagado en las manos.",
+    "condiciones": {
+      "minVinculo": 25,
+      "minEstres": 50,
+      "faseTemporada": [
+        "Activacion",
+        "Pico"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "no_mirar_juntos",
+        "texto": "«No lo abras. Ni hoy ni mañana. Eso no eres tú.»",
+        "efectos": {
+          "vinculoDelta": 9,
+          "estresDelta": -10,
+          "narrativeFlags": {
+            "crisis_viral_contenida": true
+          }
+        }
+      },
+      {
+        "id": "verlo_juntos_analizar",
+        "texto": "«Lo vemos los dos. Contigo, no sola. Y después lo cerramos.»",
+        "efectos": {
+          "vinculoDelta": 6,
+          "estresDelta": -3,
+          "narrativeFlags": {
+            "crisis_viral_procesada_juntos": true
+          },
+          "atributosDelta": {
+            "resistenciaMental": 3
+          }
+        }
+      },
+      {
+        "id": "pedir_ignorar",
+        "texto": "«No leas nada, no respondas. Concentración.» Le devuelves al trabajo.",
+        "efectos": {
+          "vinculoDelta": -5,
+          "estresDelta": 8,
+          "narrativeFlags": {
+            "crisis_viral_supresion_forzada": true
+          },
+          "rasgoRiesgo": "fragil-bajo-presion",
+          "probabilidadMutacion": 0.30
+        }
+      }
+    ]
+  },
+  {
+    "id": "crisis_comparacion_rival_01",
+    "tipo": "crisis",
+    "titulo": "La rusa de quince años",
+    "descripcion": "Vuelve de un campus internacional en shock. Una patinadora siete años más joven está haciendo cuádruples con una facilidad que ella nunca ha tenido. Al llegar al club se sienta en el banco sin quitarse el abrigo. «Igual estoy perdiendo el tiempo.»",
+    "condiciones": {
+      "minVinculo": 30,
+      "minEstres": 55,
+      "faseTemporada": [
+        "Construccion",
+        "Activacion"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "diferenciar_carreras",
+        "texto": "«Ella está en un sprint. Tú estás en otra cosa. No es la misma carrera.»",
+        "efectos": {
+          "vinculoDelta": 8,
+          "estresDelta": -8,
+          "narrativeFlags": {
+            "crisis_comparacion_reconducida": true
+          },
+          "atributosDelta": {
+            "resistenciaMental": 4
+          }
+        }
+      },
+      {
+        "id": "reconocer_la_verdad",
+        "texto": "«Sí, hay patinadoras que ganan lo que tú has tardado años en conseguir. Y aún así, estás aquí.»",
+        "efectos": {
+          "vinculoDelta": 11,
+          "estresDelta": -5,
+          "narrativeFlags": {
+            "crisis_comparacion_honestidad": true
+          }
+        }
+      },
+      {
+        "id": "entrenar_mas_duro",
+        "texto": "«Entonces hay que subir un escalón. A partir de mañana, dos horas más.»",
+        "efectos": {
+          "vinculoDelta": -10,
+          "estresDelta": 12,
+          "fatigueDelta": 10,
+          "narrativeFlags": {
+            "crisis_comparacion_huida_al_trabajo": true
+          },
+          "rasgoRiesgo": "auto-exigencia-destructiva",
+          "probabilidadMutacion": 0.35
+        }
+      }
+    ]
+  },
+  {
+    "id": "crisis_perdida_familiar_01",
+    "tipo": "crisis",
+    "titulo": "La llamada del viernes",
+    "descripcion": "Viernes a las seis de la tarde. Recibe una llamada en el vestíbulo y sale al aparcamiento. Cuando vuelve a entrar, lleva las manos en los bolsillos y los ojos rojos pero secos. Su abuela. Entierro el martes. Competición el viernes siguiente.",
+    "condiciones": {
+      "minVinculo": 35,
+      "faseTemporada": [
+        "Pico",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "retirar_competicion",
+        "texto": "«No compites. Vete con tu familia. La pista seguirá aquí cuando vuelvas.»",
+        "efectos": {
+          "vinculoDelta": 18,
+          "estresDelta": -12,
+          "narrativeFlags": {
+            "crisis_duelo_retirada_competicion": true,
+            "competicion_renunciada_por_duelo": true
+          }
+        }
+      },
+      {
+        "id": "preguntarle_que_quiere",
+        "texto": "«¿Tú qué quieres hacer? Las dos opciones son legítimas.»",
+        "efectos": {
+          "vinculoDelta": 14,
+          "estresDelta": -8,
+          "narrativeFlags": {
+            "crisis_duelo_decision_compartida": true
+          }
+        }
+      },
+      {
+        "id": "competir_como_homenaje",
+        "texto": "«Patina por ella. Eso es lo que habría querido.» No preguntas primero.",
+        "efectos": {
+          "vinculoDelta": -4,
+          "estresDelta": 10,
+          "narrativeFlags": {
+            "crisis_duelo_instrumentalizado": true
+          },
+          "rasgoRiesgo": "quemado",
+          "probabilidadMutacion": 0.25
+        }
+      }
+    ]
+  },
+  {
+    "id": "crisis_insomnio_pre_mundial_01",
+    "tipo": "crisis",
+    "titulo": "Las tres de la mañana en Montréal",
+    "descripcion": "Tres de la mañana. Suena el teléfono en tu habitación del hotel. «No he dormido. No puedo parar de pensar en el Lutz.» El Mundial empieza en trece horas. La voz es neutra. Eso es lo que más te preocupa: que suene tan tranquila.",
+    "condiciones": {
+      "minVinculo": 50,
+      "faseTemporada": [
+        "Cierre"
+      ],
+      "flagsRequeridos": [
+        "dia_antes_mundial"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "ir_a_su_habitacion",
+        "texto": "«Estoy en tu puerta en dos minutos.» Sales en pijama sin pensarlo.",
+        "efectos": {
+          "vinculoDelta": 14,
+          "estresDelta": -10,
+          "narrativeFlags": {
+            "crisis_insomnio_presencia_fisica": true
+          }
+        }
+      },
+      {
+        "id": "respirar_juntos_telefono",
+        "texto": "«Respira conmigo por teléfono. Cuatro dentro, seis fuera. No tienes que dormir. Tienes que descansar.»",
+        "efectos": {
+          "vinculoDelta": 10,
+          "estresDelta": -12,
+          "narrativeFlags": {
+            "crisis_insomnio_respiracion_guiada": true
+          },
+          "atributosDelta": {
+            "resistenciaMental": 3
+          }
+        }
+      },
+      {
+        "id": "bajarle_expectativas",
+        "texto": "«Que sea lo que sea. Mañana es solo un día.»",
+        "efectos": {
+          "vinculoDelta": 6,
+          "estresDelta": -6,
+          "narrativeFlags": {
+            "crisis_insomnio_desdramatizado": true
+          }
+        }
+      },
+      {
+        "id": "revisar_tecnica_telefono",
+        "texto": "«Repasemos la entrada del Lutz. Hombro izquierdo, mirada al cuadrante.»",
+        "efectos": {
+          "vinculoDelta": -6,
+          "estresDelta": 5,
+          "narrativeFlags": {
+            "crisis_insomnio_intelectualizado": true
+          }
         }
       }
     ]

@@ -6,7 +6,10 @@
     "descripcion": "En la gala post-competición, un juez técnico con quien tienes cierta amistad te lleva aparte. No dice nada explícito — solo que le parece que el programa libre merece más reconocimiento del que recibe. La insinuación es clara.",
     "condiciones": {
       "minVinculo": 20,
-      "faseTemporada": ["Pico", "Rearme"]
+      "faseTemporada": [
+        "Pico",
+        "Rearme"
+      ]
     },
     "opciones": [
       {
@@ -14,8 +17,12 @@
         "texto": "\"Confío en que los jueces harán su trabajo. Siempre lo hacen.\"",
         "efectos": {
           "vinculoDelta": 0,
-          "narrativeFlags": { "favor_rechazado_con_elegancia": true },
-          "atributosDelta": { "repHonestidad": 8 }
+          "narrativeFlags": {
+            "favor_rechazado_con_elegancia": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 8
+          }
         }
       },
       {
@@ -23,8 +30,12 @@
         "texto": "Escuchas. No dices sí ni no. Solo escuchas.",
         "efectos": {
           "vinculoDelta": 0,
-          "narrativeFlags": { "favor_ambiguedad_deliberada": true },
-          "atributosDelta": { "repHonestidad": -3 }
+          "narrativeFlags": {
+            "favor_ambiguedad_deliberada": true
+          },
+          "atributosDelta": {
+            "repHonestidad": -3
+          }
         }
       },
       {
@@ -32,8 +43,13 @@
         "texto": "\"Agradezco que lo digas. Ella trabaja muy duro.\"",
         "efectos": {
           "vinculoDelta": 0,
-          "narrativeFlags": { "favor_aceptado_implicito": true },
-          "atributosDelta": { "repHonestidad": -15, "repResultados": 5 }
+          "narrativeFlags": {
+            "favor_aceptado_implicito": true
+          },
+          "atributosDelta": {
+            "repHonestidad": -15,
+            "repResultados": 5
+          }
         }
       }
     ]
@@ -45,7 +61,11 @@
     "descripcion": "En un torneo menor coincides con una patinadora de un club rival. Tiene 15 años y los síntomas de sobreentrenamiento son evidentes para cualquier profesional. Su entrenador no está prestando atención.",
     "condiciones": {
       "minVinculo": 15,
-      "faseTemporada": ["Activacion", "Pico", "Rearme"]
+      "faseTemporada": [
+        "Activacion",
+        "Pico",
+        "Rearme"
+      ]
     },
     "opciones": [
       {
@@ -53,8 +73,13 @@
         "texto": "Buscas a su entrenador y se lo dices directamente, sin rodeos.",
         "efectos": {
           "vinculoDelta": 2,
-          "narrativeFlags": { "intervencion_rival_directa": true },
-          "atributosDelta": { "repCuidado": 10, "repInstitucional": -5 }
+          "narrativeFlags": {
+            "intervencion_rival_directa": true
+          },
+          "atributosDelta": {
+            "repCuidado": 10,
+            "repInstitucional": -5
+          }
         }
       },
       {
@@ -62,8 +87,12 @@
         "texto": "Hablas discretamente con el médico del torneo.",
         "efectos": {
           "vinculoDelta": 2,
-          "narrativeFlags": { "intervencion_rival_discreta": true },
-          "atributosDelta": { "repCuidado": 7 }
+          "narrativeFlags": {
+            "intervencion_rival_discreta": true
+          },
+          "atributosDelta": {
+            "repCuidado": 7
+          }
         }
       },
       {
@@ -71,7 +100,265 @@
         "texto": "No es tu patinadora, no es tu responsabilidad.",
         "efectos": {
           "vinculoDelta": 0,
-          "narrativeFlags": { "intervencion_rival_omitida": true }
+          "narrativeFlags": {
+            "intervencion_rival_omitida": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "moral_suplemento_limite_01",
+    "tipo": "decision_moral",
+    "titulo": "El sobre del preparador",
+    "descripcion": "Un preparador físico con buen nombre en el circuito te visita al vestuario. Te deja un sobre con un nuevo complemento vitamínico «que está usando media Rusia y no da positivo porque no está listado todavía.» Sonríe. No dice «dopaje». Pero tampoco dice lo contrario.",
+    "condiciones": {
+      "minVinculo": 20,
+      "faseTemporada": [
+        "Activacion",
+        "Pico"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "devolver_sobre",
+        "texto": "«Gracias, pero no.» Se lo devuelves cerrado antes de que se sienta cómodo.",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": {
+            "suplemento_rechazado": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 10
+          }
+        }
+      },
+      {
+        "id": "consultar_medico_club",
+        "texto": "Lo llevas directo al médico del club para análisis. Sin decírselo a ella.",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": {
+            "suplemento_investigado_silencio": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 3,
+            "repCuidado": 5
+          }
+        }
+      },
+      {
+        "id": "consultar_con_patinadora",
+        "texto": "Se lo enseñas esa tarde. Que decida ella sobre su propio cuerpo.",
+        "efectos": {
+          "vinculoDelta": 9,
+          "narrativeFlags": {
+            "suplemento_consultado_autonomia": true
+          },
+          "atributosDelta": {
+            "repCuidado": 8
+          }
+        }
+      },
+      {
+        "id": "guardarlo_por_si_acaso",
+        "texto": "Lo guardas en un cajón. «Por si la próxima temporada estamos más apretados.»",
+        "efectos": {
+          "vinculoDelta": -3,
+          "narrativeFlags": {
+            "suplemento_reservado_tentacion": true
+          },
+          "atributosDelta": {
+            "repHonestidad": -12
+          },
+          "rasgoRiesgo": "auto-exigencia-destructiva",
+          "probabilidadMutacion": 0.15
+        }
+      }
+    ]
+  },
+  {
+    "id": "moral_entrevista_rival_caida_01",
+    "tipo": "decision_moral",
+    "titulo": "Lo que dirías sobre ella",
+    "descripcion": "Una periodista del medio especializado prepara un perfil sobre una rival internacional que atraviesa una racha mala. Te pide un par de declaraciones de «contexto». La insinuación es que un comentario crítico mejoraría la posición de tu patinadora en las próximas quinielas.",
+    "condiciones": {
+      "minVinculo": 25,
+      "faseTemporada": [
+        "Activacion",
+        "Pico",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "rechazar_perfil",
+        "texto": "«No voy a hablar de una patinadora que no es mía. Si quieres hablar de la mía, estoy disponible.»",
+        "efectos": {
+          "vinculoDelta": 5,
+          "narrativeFlags": {
+            "perfil_rival_declinado": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 8,
+            "repInstitucional": 4
+          }
+        }
+      },
+      {
+        "id": "elogiar_rival",
+        "texto": "Hablas bien de ella. Una patinadora rigurosa, momento complicado, nada más.",
+        "efectos": {
+          "vinculoDelta": 7,
+          "narrativeFlags": {
+            "perfil_rival_elogiada": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 12,
+            "repCuidado": 6
+          }
+        }
+      },
+      {
+        "id": "comentario_ambiguo",
+        "texto": "Dices algo que suena neutro pero deja espacio a la lectura crítica. La periodista sonríe.",
+        "efectos": {
+          "vinculoDelta": -4,
+          "narrativeFlags": {
+            "perfil_rival_comentario_ambiguo": true
+          },
+          "atributosDelta": {
+            "repHonestidad": -8,
+            "repResultados": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "moral_otra_patinadora_club_01",
+    "tipo": "decision_moral",
+    "titulo": "La que también te necesita",
+    "descripcion": "Una patinadora júnior del club, que entrenas media hora por semana, te espera en el pasillo un jueves. Tiene los ojos hinchados. «Nadie me mira, entrenador.» Tu patinadora principal te espera en el hielo. Tienes treinta minutos. No hay forma limpia de repartirlos.",
+    "condiciones": {
+      "minVinculo": 40,
+      "faseTemporada": [
+        "Construccion",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "atender_junior",
+        "texto": "Te sientas con la júnior veinte minutos. Llegas tarde al hielo principal.",
+        "efectos": {
+          "vinculoDelta": -5,
+          "narrativeFlags": {
+            "prioridad_junior_sobre_principal": true
+          },
+          "atributosDelta": {
+            "repCuidado": 12,
+            "repInstitucional": 3
+          }
+        }
+      },
+      {
+        "id": "cita_despues",
+        "texto": "«Te doy una hora el sábado. Ahora necesito estar en el hielo. Pero el sábado soy todo tuyo.»",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": {
+            "junior_postergada_con_compromiso": true
+          },
+          "atributosDelta": {
+            "repCuidado": 6
+          }
+        }
+      },
+      {
+        "id": "derivar_otro_entrenador",
+        "texto": "La derivas a otro entrenador del club. «Él te va a escuchar mejor que yo.»",
+        "efectos": {
+          "vinculoDelta": 0,
+          "narrativeFlags": {
+            "junior_derivada_otro_entrenador": true
+          },
+          "atributosDelta": {
+            "repInstitucional": 5,
+            "repCuidado": -4
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "moral_lesion_federacion_01",
+    "tipo": "decision_moral",
+    "titulo": "El informe que enviaríais",
+    "descripcion": "La federación pide el informe médico preparatorio antes del Mundial. Hay una tendinitis que el fisio considera controlable con carga ajustada, pero si lo consignas textualmente, el comité técnico puede sacarla del equipo. Ella no lo sabe. El fisio te mira esperando instrucción.",
+    "condiciones": {
+      "minVinculo": 45,
+      "faseTemporada": [
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "informe_completo",
+        "texto": "El informe va completo. Si la sacan, la sacan. No es tu juicio saltarte ese paso.",
+        "efectos": {
+          "vinculoDelta": -3,
+          "narrativeFlags": {
+            "informe_federacion_completo": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 15,
+            "repInstitucional": 8
+          }
+        }
+      },
+      {
+        "id": "informe_matizado",
+        "texto": "Redactas el informe en lenguaje técnico donde la tendinitis aparece como «sobrecarga en fase de adaptación».",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": {
+            "informe_federacion_matizado": true
+          },
+          "atributosDelta": {
+            "repHonestidad": -5,
+            "repResultados": 5
+          }
+        }
+      },
+      {
+        "id": "consultar_patinadora",
+        "texto": "Llamas primero a tu patinadora. «Hay una decisión que te afecta. No la voy a tomar yo sin contártelo.»",
+        "efectos": {
+          "vinculoDelta": 13,
+          "narrativeFlags": {
+            "informe_federacion_compartido_patinadora": true
+          },
+          "atributosDelta": {
+            "repCuidado": 10,
+            "repHonestidad": 4
+          }
+        }
+      },
+      {
+        "id": "omitir_mencion",
+        "texto": "La tendinitis desaparece del informe. Es controlable. Nadie va a morir por ocultarla una semana.",
+        "efectos": {
+          "vinculoDelta": -10,
+          "narrativeFlags": {
+            "informe_federacion_omitido": true,
+            "lesion_oculta_a_federacion": true
+          },
+          "atributosDelta": {
+            "repHonestidad": -18
+          },
+          "rasgoRiesgo": "cuerpo-fragil",
+          "probabilidadMutacion": 0.25
         }
       }
     ]

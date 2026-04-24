@@ -1,12 +1,14 @@
 [
   {
     "id": "logro_primer_triple_01",
-    "tipo": "logro",
+    "tipo": "logro_compartido",
     "titulo": "El triple que ya no cae",
     "descripcion": "Siete semanas de trabajo. Trescientos intentos con red. Veinte sin ella. Hoy, en entrenamiento libre, sin que nadie la observara específicamente, ha encadenado tres triples axel limpios seguidos. Se gira hacia ti y hay algo en su cara que no habías visto antes.",
     "condiciones": {
       "minVinculo": 25,
-      "flagsRequeridos": ["trabajando_triple_axel"]
+      "flagsRequeridos": [
+        "trabajando_triple_axel"
+      ]
     },
     "opciones": [
       {
@@ -15,8 +17,14 @@
         "efectos": {
           "vinculoDelta": 10,
           "estresDelta": -8,
-          "narrativeFlags": { "triple_consolidado": true, "trabajando_triple_axel": false },
-          "atributosDelta": { "saltos": 3, "confianza": 5 }
+          "narrativeFlags": {
+            "triple_consolidado": true,
+            "trabajando_triple_axel": false
+          },
+          "atributosDelta": {
+            "saltos": 3,
+            "confianza": 5
+          }
         }
       },
       {
@@ -24,20 +32,27 @@
         "texto": "\"Bien. La semana que viene empezamos con el cuádruple lutz.\"",
         "efectos": {
           "vinculoDelta": 2,
-          "narrativeFlags": { "triple_consolidado": true, "trabajando_triple_axel": false },
-          "atributosDelta": { "saltos": 3 }
+          "narrativeFlags": {
+            "triple_consolidado": true,
+            "trabajando_triple_axel": false
+          },
+          "atributosDelta": {
+            "saltos": 3
+          }
         }
       }
     ]
   },
   {
     "id": "logro_podio_por_primera_vez_01",
-    "tipo": "logro",
+    "tipo": "logro_compartido",
     "titulo": "El podio que nadie esperaba",
     "descripcion": "Tercera posición. No era lo que el ranking sugería. Los rivales tenían más experiencia y más nombre. En la zona mixta, los periodistas le preguntan a ella. Tú observas desde lejos cómo responde y piensas: ahí está.",
     "condiciones": {
       "minVinculo": 30,
-      "flagsRequeridos": ["primer_podio_internacional"]
+      "flagsRequeridos": [
+        "primer_podio_internacional"
+      ]
     },
     "opciones": [
       {
@@ -46,8 +61,13 @@
         "efectos": {
           "vinculoDelta": 12,
           "estresDelta": -10,
-          "narrativeFlags": { "primer_podio_consolidado": true },
-          "atributosDelta": { "confianza": 8, "resistenciaMental": 4 }
+          "narrativeFlags": {
+            "primer_podio_consolidado": true
+          },
+          "atributosDelta": {
+            "confianza": 8,
+            "resistenciaMental": 4
+          }
         }
       },
       {
@@ -55,8 +75,188 @@
         "texto": "Repasáis juntos los errores técnicos. El podio es el punto de partida.",
         "efectos": {
           "vinculoDelta": 5,
-          "narrativeFlags": { "primer_podio_consolidado": true },
-          "atributosDelta": { "saltos": 2, "giros": 2 }
+          "narrativeFlags": {
+            "primer_podio_consolidado": true
+          },
+          "atributosDelta": {
+            "saltos": 2,
+            "giros": 2
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "logro_cuadruple_sin_red_01",
+    "tipo": "logro_compartido",
+    "titulo": "El cuádruple sin público",
+    "descripcion": "Miércoles cualquiera. Cuatro de la tarde. Pista vacía salvo dos figurantes del grupo infantil al fondo. Sin móvil grabando. Sin coreógrafo observando. Cuádruple lutz limpio, salida firme, mirada al techo. Los infantiles no saben lo que acaban de ver. Los dos sí.",
+    "condiciones": {
+      "minVinculo": 45,
+      "flagsRequeridos": [
+        "trabajando_cuadruple"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "aplaudir_sin_hablar",
+        "texto": "Aplaudes cinco segundos exactos. No dices nada. Ella tampoco.",
+        "efectos": {
+          "vinculoDelta": 12,
+          "estresDelta": -10,
+          "narrativeFlags": {
+            "cuadruple_consolidado": true,
+            "trabajando_cuadruple": false,
+            "celebracion_silenciosa": true
+          },
+          "atributosDelta": {
+            "saltos": 5,
+            "confianza": 8
+          }
+        }
+      },
+      {
+        "id": "decirlo_todo",
+        "texto": "«Eso es arquitectura. Has construido ese salto piedra a piedra.»",
+        "efectos": {
+          "vinculoDelta": 9,
+          "estresDelta": -7,
+          "narrativeFlags": {
+            "cuadruple_consolidado": true,
+            "trabajando_cuadruple": false,
+            "logro_verbalizado": true
+          },
+          "atributosDelta": {
+            "saltos": 5,
+            "confianza": 6
+          }
+        }
+      },
+      {
+        "id": "exigir_segunda_vuelta",
+        "texto": "«Otra vez. Para confirmar que no ha sido suerte.»",
+        "efectos": {
+          "vinculoDelta": -4,
+          "fatigueDelta": 8,
+          "narrativeFlags": {
+            "cuadruple_consolidado": true,
+            "trabajando_cuadruple": false,
+            "logro_no_celebrado": true
+          },
+          "atributosDelta": {
+            "saltos": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "logro_portada_revista_01",
+    "tipo": "logro_compartido",
+    "titulo": "Lo que llega en el quiosco",
+    "descripcion": "Portada de revista. No una cualquiera — una con tres generaciones de lectores. Ella la ha visto en el aeropuerto antes de que tú se lo mencionaras. Cuando te cruza en el vestuario, lleva el ejemplar enrollado en la mano, y no dice nada durante un rato largo.",
+    "condiciones": {
+      "minVinculo": 40,
+      "faseTemporada": [
+        "Rearme",
+        "Cierre"
+      ],
+      "flagsRequeridos": [
+        "primera_portada_internacional"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "abrir_conversacion",
+        "texto": "«Cuéntame qué sientes al verla.»",
+        "efectos": {
+          "vinculoDelta": 10,
+          "narrativeFlags": {
+            "portada_conversada": true,
+            "primera_portada_consolidada": true
+          },
+          "atributosDelta": {
+            "repMediatica": 8
+          }
+        }
+      },
+      {
+        "id": "enmarcarla_para_ella",
+        "texto": "«Déjame una para enmarcarla. En tu casa, no en la mía.»",
+        "efectos": {
+          "vinculoDelta": 7,
+          "narrativeFlags": {
+            "portada_conservada_simbolico": true,
+            "primera_portada_consolidada": true
+          }
+        }
+      },
+      {
+        "id": "advertir_ego",
+        "texto": "«Cuidado con creértelo demasiado. La siguiente portada duele más.»",
+        "efectos": {
+          "vinculoDelta": -5,
+          "estresDelta": 4,
+          "narrativeFlags": {
+            "portada_minimizada": true,
+            "primera_portada_consolidada": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "logro_standing_ovation_01",
+    "tipo": "logro_compartido",
+    "titulo": "Los diez segundos después",
+    "descripcion": "Final de programa libre. Pose final. Diez segundos de silencio antes de que el pabellón entero se ponga en pie. Ella no ha mirado al panel de jueces todavía. Está mirándote a ti por encima del cordón del kiss&cry. Y hay una sonrisa pequeña que no es de alegría — es de reconocimiento.",
+    "condiciones": {
+      "minVinculo": 55,
+      "faseTemporada": [
+        "Pico",
+        "Rearme",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "asentir_sostenido",
+        "texto": "Asientes una vez, despacio. Ella entiende todo lo que cabe en ese gesto.",
+        "efectos": {
+          "vinculoDelta": 15,
+          "estresDelta": -15,
+          "narrativeFlags": {
+            "standing_ovation_reconocida_en_silencio": true
+          },
+          "atributosDelta": {
+            "confianza": 10,
+            "motivacionIntrinseca": 5
+          }
+        }
+      },
+      {
+        "id": "aplaudir_emocionado",
+        "texto": "Aplaudes. Sonríes. Dejas que la emoción llegue a la cara sin filtrar.",
+        "efectos": {
+          "vinculoDelta": 12,
+          "estresDelta": -10,
+          "narrativeFlags": {
+            "standing_ovation_emocion_compartida": true
+          },
+          "atributosDelta": {
+            "confianza": 8
+          }
+        }
+      },
+      {
+        "id": "mantener_compostura",
+        "texto": "Mantienes la cara profesional. El trabajo aún no ha terminado.",
+        "efectos": {
+          "vinculoDelta": -3,
+          "estresDelta": 2,
+          "narrativeFlags": {
+            "standing_ovation_momento_contenido": true
+          }
         }
       }
     ]

@@ -14,7 +14,9 @@
         "texto": "\"¿Qué estás pensando?\"",
         "efectos": {
           "vinculoDelta": 6,
-          "narrativeFlags": { "rasgo_revelado_presencia_escenica": true }
+          "narrativeFlags": {
+            "rasgo_revelado_presencia_escenica": true
+          }
         }
       },
       {
@@ -22,7 +24,10 @@
         "texto": "Esperas. A veces el silencio es la única respuesta correcta.",
         "efectos": {
           "vinculoDelta": 10,
-          "narrativeFlags": { "rasgo_revelado_presencia_escenica": true, "silencio_usado_con_exito": true }
+          "narrativeFlags": {
+            "rasgo_revelado_presencia_escenica": true,
+            "silencio_usado_con_exito": true
+          }
         }
       }
     ]
@@ -34,7 +39,10 @@
     "descripcion": "Durante la sesión de mental coaching mencionas los próximos campeonatos. Hay una reacción casi imperceptible — no miedo, algo más cercano al cansancio. La sesión avanza, pero algo ha quedado suspendido en el aire.",
     "condiciones": {
       "minVinculo": 55,
-      "faseTemporada": ["Activacion", "Pico"]
+      "faseTemporada": [
+        "Activacion",
+        "Pico"
+      ]
     },
     "opciones": [
       {
@@ -43,7 +51,9 @@
         "efectos": {
           "vinculoDelta": 8,
           "estresDelta": -5,
-          "narrativeFlags": { "rasgo_revelado_motivacion_externa": true }
+          "narrativeFlags": {
+            "rasgo_revelado_motivacion_externa": true
+          }
         }
       },
       {
@@ -51,7 +61,246 @@
         "texto": "Continúas con el plan. Hay trabajo que hacer.",
         "efectos": {
           "vinculoDelta": -3,
-          "narrativeFlags": { "señal_ignorada_motivacion": true }
+          "narrativeFlags": {
+            "señal_ignorada_motivacion": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "revelacion_hermano_patinador_01",
+    "tipo": "revelacion",
+    "titulo": "El hermano que lo dejó",
+    "descripcion": "En el trayecto a un entrenamiento conjunto, menciona a un hermano mayor. No dice nombre. Dice: «Patinaba mejor que yo. A los dieciséis lo dejó. Un día no volvió al hielo.» Mira por la ventanilla. No añade nada más.",
+    "condiciones": {
+      "minVinculo": 50,
+      "maxEstres": 70
+    },
+    "opciones": [
+      {
+        "id": "preguntar_por_que",
+        "texto": "«¿Sabes por qué lo dejó?»",
+        "efectos": {
+          "vinculoDelta": 7,
+          "narrativeFlags": {
+            "rasgo_revelado_abandono_latente": true,
+            "hermano_conversado": true
+          }
+        }
+      },
+      {
+        "id": "dejar_abrir_cuando_quiera",
+        "texto": "«Gracias por contármelo.» No empujas más.",
+        "efectos": {
+          "vinculoDelta": 10,
+          "narrativeFlags": {
+            "rasgo_revelado_abandono_latente": true,
+            "hermano_respetado_silencio": true
+          }
+        }
+      },
+      {
+        "id": "conectar_con_ella",
+        "texto": "«¿Tú también te lo has planteado alguna vez?»",
+        "efectos": {
+          "vinculoDelta": 4,
+          "estresDelta": 5,
+          "narrativeFlags": {
+            "rasgo_revelado_abandono_latente": true,
+            "hermano_espejo_forzado": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "revelacion_admiracion_rival_01",
+    "tipo": "revelacion",
+    "titulo": "La patinadora del póster",
+    "descripcion": "En el vestuario después de un entrenamiento, tropezáis con una revista vieja. Aparece una fotografía de una patinadora que hoy es rival directa. Ella se queda mirándola más tiempo del habitual. «Tenía su póster en mi habitación hasta los quince.»",
+    "condiciones": {
+      "minVinculo": 55,
+      "faseTemporada": [
+        "Construccion",
+        "Activacion",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "reconocer_admiracion",
+        "texto": "«Y ahora compites con ella. Eso significa algo.»",
+        "efectos": {
+          "vinculoDelta": 8,
+          "narrativeFlags": {
+            "rasgo_revelado_competidor_de_un_solo_rival": true,
+            "idol_nombrado": true
+          },
+          "atributosDelta": {
+            "confianza": 3
+          }
+        }
+      },
+      {
+        "id": "redirigir_tecnico",
+        "texto": "«Técnicamente hace un Lutz de libro. Podemos aprender de su arranque.»",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": {
+            "admiracion_convertida_en_analisis": true
+          }
+        }
+      },
+      {
+        "id": "preguntar_que_queda",
+        "texto": "«¿Qué queda de esa admiración ahora?»",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": {
+            "rasgo_revelado_competidor_de_un_solo_rival": true,
+            "admiracion_interrogada": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "revelacion_padre_ausente_01",
+    "tipo": "revelacion",
+    "titulo": "La foto sin firmar",
+    "descripcion": "Se le cae la cartera. Al recogerla ves la esquina de una foto polaroid: un hombre sosteniéndola de niña sobre unos patines demasiado grandes. «Nunca me vio competir en adulta.» No dice si murió, se fue, o simplemente dejó de ir.",
+    "condiciones": {
+      "minVinculo": 70
+    },
+    "opciones": [
+      {
+        "id": "esperar_que_cuente",
+        "texto": "Asientes. Dejas el silencio abierto por si quiere rellenarlo.",
+        "efectos": {
+          "vinculoDelta": 12,
+          "narrativeFlags": {
+            "rasgo_revelado_deuda_emocional": true,
+            "padre_silencio_respetado": true
+          }
+        }
+      },
+      {
+        "id": "ofrecer_presencia",
+        "texto": "«Alguien tiene que verte. Aquí estoy yo.»",
+        "efectos": {
+          "vinculoDelta": 8,
+          "narrativeFlags": {
+            "rasgo_revelado_deuda_emocional": true,
+            "padre_sustitucion_ofrecida": true
+          }
+        }
+      },
+      {
+        "id": "devolver_cartera",
+        "texto": "Le devuelves la cartera sin mirar más. Algunas cosas no son para ti.",
+        "efectos": {
+          "vinculoDelta": 4,
+          "narrativeFlags": {
+            "padre_discrecion_total": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "revelacion_primera_competencia_01",
+    "tipo": "revelacion",
+    "titulo": "El pabellón frío de Tampere",
+    "descripcion": "Calentando antes del Europeo, el altavoz cruje durante un segundo — el mismo chasquido de los pabellones antiguos. Ella se detiene. «Mi primera competición fue a los ocho años, en Tampere. Había moqueta roja y olía a cera de patines. Hace diecisiete años que busco ese olor otra vez.»",
+    "condiciones": {
+      "minVinculo": 35,
+      "faseTemporada": [
+        "Pico",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "pedir_mas",
+        "texto": "«Cuéntame esa competición.»",
+        "efectos": {
+          "vinculoDelta": 7,
+          "estresDelta": -5,
+          "narrativeFlags": {
+            "rasgo_revelado_amor_patinaje_puro": true,
+            "tampere_conversado": true
+          }
+        }
+      },
+      {
+        "id": "conectar_al_momento",
+        "texto": "«Esta pista también huele a algo. Encuéntralo antes de salir.»",
+        "efectos": {
+          "vinculoDelta": 9,
+          "estresDelta": -8,
+          "narrativeFlags": {
+            "rasgo_revelado_amor_patinaje_puro": true,
+            "anclaje_sensorial_ofrecido": true
+          },
+          "atributosDelta": {
+            "confianza": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "revelacion_cuerpo_cambiante_01",
+    "tipo": "revelacion",
+    "titulo": "Lo que el espejo dice ahora",
+    "descripcion": "Después de una sesión de trabajo físico, se queda frente al espejo del gimnasio más tiempo del necesario. No se está admirando. Está midiendo. «El cuerpo con el que aprendí estos saltos ya no existe. Cada temporada aprendo el nuevo. A veces me canso de empezar.»",
+    "condiciones": {
+      "minVinculo": 45,
+      "minEstres": 40,
+      "faseTemporada": [
+        "Rearme",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "validar_proceso",
+        "texto": "«Eso también es una técnica. Adaptarse es parte del oficio.»",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": {
+            "rasgo_revelado_verguenza_cuerpo": true,
+            "adaptacion_validada": true
+          },
+          "atributosDelta": {
+            "resistenciaMental": 2
+          }
+        }
+      },
+      {
+        "id": "reconocer_dificultad",
+        "texto": "«Lo sé. Y es agotador. No hace falta fingir que no lo es.»",
+        "efectos": {
+          "vinculoDelta": 10,
+          "estresDelta": -7,
+          "narrativeFlags": {
+            "rasgo_revelado_verguenza_cuerpo": true,
+            "agotamiento_validado": true
+          }
+        }
+      },
+      {
+        "id": "minimizar",
+        "texto": "«Todos los atletas pasan por eso. No le des vueltas.»",
+        "efectos": {
+          "vinculoDelta": -8,
+          "estresDelta": 6,
+          "narrativeFlags": {
+            "senal_cuerpo_minimizada": true
+          },
+          "rasgoRiesgo": "verguenza-del-cuerpo",
+          "probabilidadMutacion": 0.30
         }
       }
     ]

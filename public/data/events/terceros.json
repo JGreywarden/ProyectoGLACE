@@ -6,7 +6,10 @@
     "descripcion": "La madre de tu patinadora te llama directamente. No es la primera vez. Esta vez la conversación dura cuarenta minutos y en algún punto queda claro que ella tiene una opinión muy formada sobre el programa libre de esta temporada.",
     "condiciones": {
       "minVinculo": 10,
-      "faseTemporada": ["Construccion", "Activacion"]
+      "faseTemporada": [
+        "Construccion",
+        "Activacion"
+      ]
     },
     "opciones": [
       {
@@ -14,8 +17,12 @@
         "texto": "\"Las decisiones artísticas las toma ella. Con mi asesoramiento. Te animo a hablarlo con ella directamente.\"",
         "efectos": {
           "vinculoDelta": 5,
-          "narrativeFlags": { "familia_redirigida_correctamente": true },
-          "atributosDelta": { "repCuidado": 4 }
+          "narrativeFlags": {
+            "familia_redirigida_correctamente": true
+          },
+          "atributosDelta": {
+            "repCuidado": 4
+          }
         }
       },
       {
@@ -23,8 +30,12 @@
         "texto": "Escuchas. Cambias un detalle menor del programa para mantener la paz.",
         "efectos": {
           "vinculoDelta": -4,
-          "narrativeFlags": { "familia_influye_programa": true },
-          "atributosDelta": { "repArtistica": -3 }
+          "narrativeFlags": {
+            "familia_influye_programa": true
+          },
+          "atributosDelta": {
+            "repArtistica": -3
+          }
         }
       },
       {
@@ -33,8 +44,12 @@
         "efectos": {
           "vinculoDelta": 8,
           "estresDelta": -3,
-          "narrativeFlags": { "limite_familia_establecido": true },
-          "atributosDelta": { "repHonestidad": 6 }
+          "narrativeFlags": {
+            "limite_familia_establecido": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 6
+          }
         }
       }
     ]
@@ -46,7 +61,10 @@
     "descripcion": "El representante del sponsor principal solicita una reunión. El contrato se renueva en tres meses y quieren ver «más presencia mediática». La implicación es que tu patinadora debería hacer más entrevistas y apariciones que, sabes perfectamente, la agotan.",
     "condiciones": {
       "minVinculo": 20,
-      "faseTemporada": ["Rearme", "Cierre"]
+      "faseTemporada": [
+        "Rearme",
+        "Cierre"
+      ]
     },
     "opciones": [
       {
@@ -54,8 +72,13 @@
         "texto": "Negocias: dos apariciones al mes, en fechas que ella elija.",
         "efectos": {
           "vinculoDelta": 6,
-          "narrativeFlags": { "sponsor_negociado_proteccion": true },
-          "atributosDelta": { "repCuidado": 8, "ingresoSemanal": -200 }
+          "narrativeFlags": {
+            "sponsor_negociado_proteccion": true
+          },
+          "atributosDelta": {
+            "repCuidado": 8,
+            "ingresoSemanal": -200
+          }
         }
       },
       {
@@ -64,7 +87,223 @@
         "efectos": {
           "vinculoDelta": -5,
           "estresDelta": 8,
-          "narrativeFlags": { "sponsor_aceptado_sin_filtro": true }
+          "narrativeFlags": {
+            "sponsor_aceptado_sin_filtro": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "terceros_pareja_aparece_01",
+    "tipo": "terceros",
+    "titulo": "El acompañante del miércoles",
+    "descripcion": "Nunca habla de su pareja. Un miércoles aparece alguien a esperarla en la puerta del club. Se presentan sin apellido. Se quedan en la cafetería mientras termina. Al volver, ella no dice nada. Tres semanas después, ese alguien vuelve. Y luego un domingo de competición.",
+    "condiciones": {
+      "minVinculo": 45,
+      "faseTemporada": [
+        "Construccion",
+        "Activacion",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "respetar_privacidad",
+        "texto": "No preguntas. Su vida personal no necesita pasar por ti.",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": {
+            "pareja_privacidad_respetada": true
+          }
+        }
+      },
+      {
+        "id": "abrir_espacio",
+        "texto": "«Si alguna vez quieres traerle a cenar, el equipo cocina bien.» Abres la puerta sin empujar.",
+        "efectos": {
+          "vinculoDelta": 10,
+          "narrativeFlags": {
+            "pareja_espacio_abierto": true
+          }
+        }
+      },
+      {
+        "id": "preocuparte_rendimiento",
+        "texto": "«Cuidado con el desgaste emocional. Estamos en semana de cuatro estrellas.»",
+        "efectos": {
+          "vinculoDelta": -8,
+          "estresDelta": 5,
+          "narrativeFlags": {
+            "pareja_vista_como_riesgo": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "terceros_ex_entrenador_gala_01",
+    "tipo": "terceros",
+    "titulo": "El que la formó antes",
+    "descripcion": "En la gala post-Europeo, reconoces al entrenador que la llevó entre los siete y los diecisiete años. Se acerca a saludarla. Se abrazan. Él dice algo que le hace reír y llorar a la vez, en diez segundos. Cuando se gira hacia ti, no sabes qué cara tiene.",
+    "condiciones": {
+      "minVinculo": 30,
+      "faseTemporada": [
+        "Rearme",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "saludar_cordial",
+        "texto": "Te acercas, te presentas. Conversación corta, profesional, sin drama.",
+        "efectos": {
+          "vinculoDelta": 5,
+          "narrativeFlags": {
+            "ex_entrenador_saludado_cordial": true
+          },
+          "atributosDelta": {
+            "repInstitucional": 4
+          }
+        }
+      },
+      {
+        "id": "darles_espacio",
+        "texto": "Te quedas apartado. Ese momento no es para ti.",
+        "efectos": {
+          "vinculoDelta": 9,
+          "narrativeFlags": {
+            "ex_entrenador_espacio_respetado": true
+          }
+        }
+      },
+      {
+        "id": "reclamar_presencia",
+        "texto": "Te acercas y le pasas el brazo por el hombro. Dejas claro que ahora ella es tuya.",
+        "efectos": {
+          "vinculoDelta": -10,
+          "narrativeFlags": {
+            "ex_entrenador_territorialidad": true
+          },
+          "rasgoRiesgo": "fragil-bajo-presion",
+          "probabilidadMutacion": 0.15
+        }
+      }
+    ]
+  },
+  {
+    "id": "terceros_periodista_perfil_01",
+    "tipo": "terceros",
+    "titulo": "El perfil del domingo",
+    "descripcion": "Una periodista con nombre pide una jornada completa con ella. Quiere escribir un perfil de domingo en un medio grande. La periodista tiene reputación de escribir piezas brillantes y demoledoras a partes iguales. La oferta es irrechazable. El riesgo, también.",
+    "condiciones": {
+      "minVinculo": 25,
+      "faseTemporada": [
+        "Rearme",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "aceptar_con_control",
+        "texto": "Aceptas con condiciones: sin día de competición, sin preguntas sobre familia, entrevista acompañada por ti.",
+        "efectos": {
+          "vinculoDelta": 4,
+          "narrativeFlags": {
+            "periodista_perfil_con_barreras": true
+          },
+          "atributosDelta": {
+            "repMediatica": 8,
+            "repCuidado": 5
+          }
+        }
+      },
+      {
+        "id": "aceptar_sin_control",
+        "texto": "Le das acceso total. Confías en que ella va a dar la mejor versión de sí misma.",
+        "efectos": {
+          "vinculoDelta": 7,
+          "estresDelta": 6,
+          "narrativeFlags": {
+            "periodista_perfil_acceso_total": true
+          },
+          "atributosDelta": {
+            "repMediatica": 12,
+            "repArtistica": 6
+          }
+        }
+      },
+      {
+        "id": "declinar",
+        "texto": "«No es el momento. Si me vuelves a llamar en primavera, hablamos.»",
+        "efectos": {
+          "vinculoDelta": 2,
+          "narrativeFlags": {
+            "periodista_perfil_postergado": true
+          },
+          "atributosDelta": {
+            "repMediatica": -4,
+            "repCuidado": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "terceros_federacion_politica_01",
+    "tipo": "terceros",
+    "titulo": "La llamada de la federación",
+    "descripcion": "El director técnico de la federación te llama. Quiere que tu patinadora ceda su plaza de exhibición en un evento menor para favorecer a una júnior «con buena proyección política». A cambio, se valorará positivamente en futuras asignaciones de cuota mundial.",
+    "condiciones": {
+      "minVinculo": 30,
+      "faseTemporada": [
+        "Rearme",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "rechazar_directo",
+        "texto": "«Ella se ha ganado esa plaza en pista. Con todo el respeto, ahí no hay conversación.»",
+        "efectos": {
+          "vinculoDelta": 8,
+          "narrativeFlags": {
+            "federacion_confrontada_limite": true
+          },
+          "atributosDelta": {
+            "repHonestidad": 10,
+            "repInstitucional": -12
+          }
+        }
+      },
+      {
+        "id": "consultar_patinadora",
+        "texto": "«Déjame hablar con ella. Es su cuerpo, su plaza, su decisión.»",
+        "efectos": {
+          "vinculoDelta": 11,
+          "narrativeFlags": {
+            "federacion_consultada_con_patinadora": true
+          },
+          "atributosDelta": {
+            "repCuidado": 10
+          }
+        }
+      },
+      {
+        "id": "aceptar_discreto",
+        "texto": "«Hablamos. A ver qué podemos hacer.» Jugar el juego largo.",
+        "efectos": {
+          "vinculoDelta": -12,
+          "narrativeFlags": {
+            "federacion_plaza_cedida_politica": true
+          },
+          "atributosDelta": {
+            "repInstitucional": 15,
+            "repHonestidad": -10,
+            "repCuidado": -8
+          },
+          "rasgoRiesgo": "deuda-emocional",
+          "probabilidadMutacion": 0.20
         }
       }
     ]
