@@ -7,7 +7,10 @@
     "condiciones": {
       "minVinculo": 35,
       "maxEstres": 60,
-      "faseTemporada": ["Construccion", "Cierre"]
+      "faseTemporada": [
+        "Construccion",
+        "Cierre"
+      ]
     },
     "opciones": [
       {
@@ -15,8 +18,12 @@
         "texto": "\"Ponla otra vez. Cuéntame qué sientes cuando la escuchas.\"",
         "efectos": {
           "vinculoDelta": 7,
-          "narrativeFlags": { "musica_compartida_con_exito": true },
-          "atributosDelta": { "pcsBonus": 2 }
+          "narrativeFlags": {
+            "musica_compartida_con_exito": true
+          },
+          "atributosDelta": {
+            "pcsBonus": 2
+          }
         }
       },
       {
@@ -24,7 +31,9 @@
         "texto": "\"Interesante. Lo guardamos para la próxima temporada.\"",
         "efectos": {
           "vinculoDelta": 3,
-          "narrativeFlags": { "musica_archivada_para_futuro": true }
+          "narrativeFlags": {
+            "musica_archivada_para_futuro": true
+          }
         }
       }
     ]
@@ -44,7 +53,9 @@
         "efectos": {
           "vinculoDelta": 4,
           "fatigueDelta": -5,
-          "narrativeFlags": { "mal_dia_gestionado_pausa": true }
+          "narrativeFlags": {
+            "mal_dia_gestionado_pausa": true
+          }
         }
       },
       {
@@ -52,7 +63,9 @@
         "texto": "Cambias el plan. Hoy solo pasos. Sin saltos, sin presión.",
         "efectos": {
           "vinculoDelta": 3,
-          "narrativeFlags": { "mal_dia_reconducido": true }
+          "narrativeFlags": {
+            "mal_dia_reconducido": true
+          }
         }
       },
       {
@@ -62,7 +75,229 @@
           "vinculoDelta": -2,
           "estresDelta": 5,
           "fatigueDelta": 8,
-          "narrativeFlags": { "mal_dia_forzado": true }
+          "narrativeFlags": {
+            "mal_dia_forzado": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "cotidiano_pregunta_sobre_ti_01",
+    "tipo": "cotidiano",
+    "titulo": "Lo que haces los domingos",
+    "descripcion": "Camino del vestuario, sin levantar la vista de los cordones de sus botas, te pregunta qué haces los domingos. Es una pregunta ordinaria. Pero en seis meses de trabajar juntos, nunca te había preguntado nada sobre tu vida.",
+    "condiciones": {
+      "minVinculo": 40,
+      "maxEstres": 65
+    },
+    "opciones": [
+      {
+        "id": "responder_honestamente",
+        "texto": "Le cuentas algo pequeño. Un libro, un paseo, nada heroico.",
+        "efectos": {
+          "vinculoDelta": 8,
+          "narrativeFlags": {
+            "entrenador_visto_como_persona": true
+          }
+        }
+      },
+      {
+        "id": "desviar_profesional",
+        "texto": "«Normalmente reviso los vídeos de la semana.» Mantienes el rol.",
+        "efectos": {
+          "vinculoDelta": -2,
+          "narrativeFlags": {
+            "entrenador_mantiene_rol": true
+          }
+        }
+      },
+      {
+        "id": "devolver_pregunta",
+        "texto": "«¿Y tú?» Le devuelves la pregunta antes de responder.",
+        "efectos": {
+          "vinculoDelta": 5,
+          "narrativeFlags": {
+            "dialogo_espejo_domingo": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "cotidiano_ritual_entrada_01",
+    "tipo": "cotidiano",
+    "titulo": "El gesto que se repite",
+    "descripcion": "Hace seis semanas que lo haces cada vez que entráis a una pista nueva: pasas la mano por el borde antes que ella. Pequeño, discreto. Hoy, en Helsinki, ella te mira hacerlo. Luego pasa su mano por el mismo sitio.",
+    "condiciones": {
+      "minVinculo": 45,
+      "faseTemporada": [
+        "Activacion",
+        "Pico",
+        "Rearme"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "nombrar_ritual",
+        "texto": "«Al final lo has aprendido.»",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": {
+            "ritual_nombrado": true
+          },
+          "atributosDelta": {
+            "confianza": 2
+          }
+        }
+      },
+      {
+        "id": "mantener_silencio",
+        "texto": "No dices nada. Dejas que el gesto se quede entre los dos sin explicarse.",
+        "efectos": {
+          "vinculoDelta": 9,
+          "narrativeFlags": {
+            "ritual_compartido_silencio": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "cotidiano_aeropuerto_madrugada_01",
+    "tipo": "cotidiano",
+    "titulo": "La espera de las cinco horas",
+    "descripcion": "Vuelo cancelado. Cinco horas en la terminal dormida. Ella pide un café doble y se sienta frente a ti. No saca el teléfono. Sólo observa el carrusel de maletas vacío dando vueltas.",
+    "condiciones": {
+      "minVinculo": 30,
+      "faseTemporada": [
+        "Pico",
+        "Rearme",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "conversar_trivial",
+        "texto": "Hablas de cosas tontas. Un restaurante. Una película. Nada del hielo.",
+        "efectos": {
+          "vinculoDelta": 5,
+          "estresDelta": -4,
+          "narrativeFlags": {
+            "espera_conversada": true
+          }
+        }
+      },
+      {
+        "id": "trabajar_portatil",
+        "texto": "Abres el portátil. Revisas vídeos. El descanso del trabajo es trabajar mejor.",
+        "efectos": {
+          "vinculoDelta": -3,
+          "fatigueDelta": 3,
+          "narrativeFlags": {
+            "espera_trabajada": true
+          }
+        }
+      },
+      {
+        "id": "dejar_silencio",
+        "texto": "La dejas sola con el café. Te sientas al lado. Nadie necesita llenar nada.",
+        "efectos": {
+          "vinculoDelta": 8,
+          "estresDelta": -6,
+          "narrativeFlags": {
+            "espera_en_silencio_compartido": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "cotidiano_foto_nina_01",
+    "tipo": "cotidiano",
+    "titulo": "Lo que hay en la caja del club",
+    "descripcion": "Buscando un recambio de cuchillas en el almacén, aparece una caja con fotos antiguas. Entre ellas hay una suya con siete años, uniforme de club infantil, sonrisa sin dientes superiores. Te la enseña al día siguiente.",
+    "condiciones": {
+      "minVinculo": 35,
+      "faseTemporada": [
+        "Construccion",
+        "Cierre"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "preguntar_recuerdos",
+        "texto": "«¿Qué recuerdas de entonces?»",
+        "efectos": {
+          "vinculoDelta": 7,
+          "narrativeFlags": {
+            "foto_nina_conversada": true
+          }
+        }
+      },
+      {
+        "id": "broma_carinosa",
+        "texto": "«Conservas la misma mirada.»",
+        "efectos": {
+          "vinculoDelta": 5,
+          "narrativeFlags": {
+            "foto_nina_broma": true
+          }
+        }
+      },
+      {
+        "id": "guardar_para_ti",
+        "texto": "Sonríes. Se la devuelves sin añadir nada. No todo necesita palabras.",
+        "efectos": {
+          "vinculoDelta": 4,
+          "narrativeFlags": {
+            "foto_nina_reservada": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "cotidiano_dia_lluvioso_01",
+    "tipo": "cotidiano",
+    "titulo": "Antes del primer salto",
+    "descripcion": "Llueve fuerte al llegar al pabellón. Ella se queda un momento bajo el alero, mirando el agua caer sobre el aparcamiento. «A veces pienso que si no fuera patinadora querría trabajar afuera. En algo que me mojara.»",
+    "condiciones": {
+      "minVinculo": 50,
+      "faseTemporada": [
+        "Construccion",
+        "Activacion"
+      ]
+    },
+    "opciones": [
+      {
+        "id": "acompanar_idea",
+        "texto": "«¿Jardinería? ¿Biología marina?» Le sigues el juego.",
+        "efectos": {
+          "vinculoDelta": 6,
+          "narrativeFlags": {
+            "vida_alternativa_imaginada": true
+          }
+        }
+      },
+      {
+        "id": "reconducir_al_dia",
+        "texto": "«Tenemos calentamiento en diez minutos.» La profesionalidad antes que la fantasía.",
+        "efectos": {
+          "vinculoDelta": -3,
+          "narrativeFlags": {
+            "senal_romantica_ignorada": true
+          }
+        }
+      },
+      {
+        "id": "preguntar_que_hay_debajo",
+        "texto": "«¿Estás bien?» La pregunta es más honesta de lo que parece.",
+        "efectos": {
+          "vinculoDelta": 8,
+          "narrativeFlags": {
+            "pregunta_bajo_la_lluvia": true
+          }
         }
       }
     ]

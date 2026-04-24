@@ -1,0 +1,493 @@
+[
+  {
+    "id": "momento_early_mirada_01",
+    "tipo": "momento_competicion",
+    "trigger": "early",
+    "titulo": "Antes del primer combo",
+    "descripcion": "Se está colocando para el triple Lutz-triple toe. Respira dos veces. Te mira. Dos segundos. El panel espera.",
+    "condiciones": { "minVinculo": 0 },
+    "opciones": [
+      {
+        "id": "sostener_mirada",
+        "texto": "Sostienes la mirada. Asientes una vez.",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "varianzaMultiplier": 0.85,
+          "bondDelta": 2,
+          "narrativeFlags": { "mirada_sostenida_primer_combo": true }
+        }
+      },
+      {
+        "id": "cerrar_ojos",
+        "texto": "Cierras los ojos un instante. Le das espacio para no ser observada.",
+        "efectos": {
+          "goeDeltaCurrent": 0.1,
+          "varianzaMultiplier": 1.0,
+          "bondDelta": 3,
+          "narrativeFlags": { "espacio_concedido_primer_combo": true }
+        }
+      },
+      {
+        "id": "mirar_notas",
+        "texto": "Miras las notas como si no estuviera.",
+        "efectos": {
+          "goeDeltaCurrent": -0.1,
+          "varianzaMultiplier": 1.15,
+          "bondDelta": -1,
+          "narrativeFlags": { "distancia_forzada_primer_combo": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_early_ruido_publico_01",
+    "tipo": "momento_competicion",
+    "trigger": "early",
+    "titulo": "El grupo de la tercera fila",
+    "descripcion": "Alguien del público está animándola por nombre desde la tercera fila, justo antes de la entrada. No es familia suya. Es la barra brava de la rival que ha competido hace veinte minutos. Ella los ha oído.",
+    "condiciones": { "minVinculo": 10 },
+    "opciones": [
+      {
+        "id": "senalar_musica",
+        "texto": "Le haces un gesto hacia el altavoz. «Busca la música.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.2,
+          "goeDeltaRemaining": 0.05,
+          "bondDelta": 2,
+          "narrativeFlags": { "ruido_reconducido_a_musica": true }
+        }
+      },
+      {
+        "id": "sonreir_complice",
+        "texto": "Le sonríes con complicidad. «Los locales siempre hacen ruido. Gana tú también.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.15,
+          "varianzaMultiplier": 1.1,
+          "bondDelta": 1,
+          "narrativeFlags": { "ruido_convertido_en_combustible": true }
+        }
+      },
+      {
+        "id": "dejarla_gestionar",
+        "texto": "No haces nada. Confías en que ella sepa qué hacer con eso.",
+        "efectos": {
+          "goeDeltaCurrent": 0.0,
+          "varianzaMultiplier": 1.2,
+          "bondDelta": 3,
+          "narrativeFlags": { "ruido_delegado_a_patinadora": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_early_calentamiento_regular_01",
+    "tipo": "momento_competicion",
+    "trigger": "early",
+    "titulo": "Lo que vino del calentamiento",
+    "descripcion": "Seis minutos de calentamiento flojos. Dos caídas, una rotación corta. Los comentaristas lo han notado. Ella también. El programa empieza en tres minutos.",
+    "condiciones": { "minVinculo": 20 },
+    "opciones": [
+      {
+        "id": "separar_calentamiento_programa",
+        "texto": "«El calentamiento no cuenta. El programa es otro animal.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.2,
+          "goeDeltaRemaining": 0.03,
+          "bondDelta": 1,
+          "narrativeFlags": { "calentamiento_separado_programa": true }
+        }
+      },
+      {
+        "id": "ajustar_tecnica",
+        "texto": "Le das una corrección técnica concreta: «Más flexión en la entrada del Lutz».",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "varianzaMultiplier": 0.9,
+          "goeDeltaRemaining": -0.05,
+          "bondDelta": 0,
+          "narrativeFlags": { "calentamiento_ajustado_tecnicamente": true }
+        }
+      },
+      {
+        "id": "aceptar_dia_dificil",
+        "texto": "«Si hoy es día de sobrevivir, lo sobrevivimos. Sin drama.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.0,
+          "varianzaMultiplier": 0.8,
+          "bondDelta": 2,
+          "narrativeFlags": { "dia_dificil_aceptado": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_early_rival_excelente_01",
+    "tipo": "momento_competicion",
+    "trigger": "early",
+    "titulo": "Lo que acaba de hacer la anterior",
+    "descripcion": "La rival directa ha terminado hace cinco minutos. Score personal, 78 en el corto. El pabellón aún aplaude al fondo cuando ella sale al hielo.",
+    "condiciones": { "minVinculo": 15 },
+    "opciones": [
+      {
+        "id": "no_mencionar_score",
+        "texto": "No mencionas el resultado de la otra. Como si no existiera.",
+        "efectos": {
+          "goeDeltaCurrent": 0.15,
+          "varianzaMultiplier": 0.9,
+          "bondDelta": 1,
+          "narrativeFlags": { "rival_ignorada_foco_propio": true }
+        }
+      },
+      {
+        "id": "reconocer_reto",
+        "texto": "«Ella ha puesto 78. Tu programa vale más si lo patinas como sabes.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.25,
+          "goeDeltaRemaining": 0.08,
+          "varianzaMultiplier": 1.25,
+          "bondDelta": 2,
+          "narrativeFlags": { "rival_reconocida_como_reto": true }
+        }
+      },
+      {
+        "id": "presionar_superar",
+        "texto": "«Tienes que superar 78. Es lo mínimo.»",
+        "efectos": {
+          "goeDeltaCurrent": -0.1,
+          "varianzaMultiplier": 1.4,
+          "bondDelta": -2,
+          "narrativeFlags": { "rival_convertida_en_presion": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_mid_respiracion_01",
+    "tipo": "momento_competicion",
+    "trigger": "mid",
+    "titulo": "La transición al segundo tercio",
+    "descripcion": "Primera mitad limpia. Entrada al segundo tercio — el tercio con el bonus del diez por ciento. Respiración pesada en la pausa coreográfica. Cuatro segundos hasta el triple flip.",
+    "condiciones": { "minVinculo": 10 },
+    "opciones": [
+      {
+        "id": "confiar_en_ritmo",
+        "texto": "Confías en que encuentre el ritmo por sí misma. Observas.",
+        "efectos": {
+          "goeDeltaCurrent": 0.1,
+          "goeDeltaRemaining": 0.05,
+          "bondDelta": 2,
+          "narrativeFlags": { "transicion_ritmo_confiada": true }
+        }
+      },
+      {
+        "id": "gesto_aire",
+        "texto": "Dibujas con la mano en el aire el arco de la música. Ella te ve por el rabillo del ojo.",
+        "efectos": {
+          "goeDeltaCurrent": 0.25,
+          "varianzaMultiplier": 0.85,
+          "bondDelta": 2,
+          "narrativeFlags": { "gesto_aire_mid_ritmo": true }
+        }
+      },
+      {
+        "id": "cronometrar_mental",
+        "texto": "Cuentas mentalmente los compases. Cálculo puro, sin emoción.",
+        "efectos": {
+          "goeDeltaCurrent": 0.05,
+          "varianzaMultiplier": 1.05,
+          "bondDelta": 0,
+          "narrativeFlags": { "cronometrado_clinico_mid": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_mid_caida_01",
+    "tipo": "momento_competicion",
+    "trigger": "mid",
+    "titulo": "Lo que se hace después de caer",
+    "descripcion": "Triple loop en pop. Una rotación. Caída limpia sobre la cadera. Se levanta en un segundo y medio. Queda una spin, secuencia de pasos y el combo final. Tres minutos de programa por delante.",
+    "condiciones": { "minVinculo": 20 },
+    "opciones": [
+      {
+        "id": "senal_reset",
+        "texto": "Dos dedos en el pecho — el gesto acordado. «Reset. Desde cero. Sigue el programa.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.2,
+          "goeDeltaRemaining": 0.1,
+          "varianzaMultiplier": 0.8,
+          "bondDelta": 3,
+          "narrativeFlags": { "gesto_reset_post_caida": true }
+        }
+      },
+      {
+        "id": "mirada_firme",
+        "texto": "Mirada dura. Sin gesto. «Ahora te levantas y ganas lo que queda.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "varianzaMultiplier": 1.3,
+          "bondDelta": -1,
+          "narrativeFlags": { "mirada_dura_post_caida": true }
+        }
+      },
+      {
+        "id": "mano_al_corazon",
+        "texto": "Te llevas la mano al corazón. «Está bien. La caída ya pasó.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.1,
+          "goeDeltaRemaining": 0.05,
+          "varianzaMultiplier": 0.9,
+          "bondDelta": 4,
+          "narrativeFlags": { "consuelo_post_caida": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_mid_musica_baja_01",
+    "tipo": "momento_competicion",
+    "trigger": "mid",
+    "titulo": "Cuando baja el volumen",
+    "descripcion": "Entra la pausa larga de la música. Nueve segundos de quietud. El pabellón en silencio respiratorio. Ella mantiene una pose larga de cabeza baja antes de la secuencia coreográfica.",
+    "condiciones": { "minVinculo": 30 },
+    "opciones": [
+      {
+        "id": "dejar_que_habite",
+        "texto": "No haces nada. Dejas que habite el silencio. Los jueces lo sienten.",
+        "efectos": {
+          "goeDeltaCurrent": 0.2,
+          "goeDeltaRemaining": 0.1,
+          "bondDelta": 3,
+          "narrativeFlags": { "silencio_habitado_mid": true }
+        }
+      },
+      {
+        "id": "sonrisa_pequena",
+        "texto": "Una sonrisa mínima si te mira. Un punto de anclaje en la emoción.",
+        "efectos": {
+          "goeDeltaCurrent": 0.25,
+          "varianzaMultiplier": 0.95,
+          "bondDelta": 2,
+          "narrativeFlags": { "sonrisa_ancla_mid": true }
+        }
+      },
+      {
+        "id": "preparar_siguiente",
+        "texto": "Preparas la voz para gritar la corrección del próximo salto. El silencio es un hueco técnico.",
+        "efectos": {
+          "goeDeltaCurrent": -0.05,
+          "varianzaMultiplier": 1.1,
+          "bondDelta": -1,
+          "narrativeFlags": { "silencio_desperdiciado_mid": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_mid_ritmo_perfecto_01",
+    "tipo": "momento_competicion",
+    "trigger": "mid",
+    "titulo": "Todo está saliendo",
+    "descripcion": "Primera mitad perfecta. Secuencia de pasos brillante. Está patinando al nivel que en entrenamiento sólo sale uno de cada cinco intentos. Queda el tercio con el combo final. No hay margen para aflojar. Tampoco para sobreexcitarse.",
+    "condiciones": { "minVinculo": 25 },
+    "opciones": [
+      {
+        "id": "mantener_programa",
+        "texto": "Le haces la señal acordada de «mantén lo que traes». No cambiar nada.",
+        "efectos": {
+          "goeDeltaCurrent": 0.2,
+          "goeDeltaRemaining": 0.1,
+          "varianzaMultiplier": 0.8,
+          "bondDelta": 2,
+          "narrativeFlags": { "ritmo_perfecto_mantenido": true }
+        }
+      },
+      {
+        "id": "subir_apuesta",
+        "texto": "Cruzas los dedos levantándolos. «Sube la rotación del último. Hazlo cuádruple si lo sientes.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "goeDeltaRemaining": 0.15,
+          "varianzaMultiplier": 1.6,
+          "bondDelta": 3,
+          "narrativeFlags": { "ritmo_perfecto_apuesta_subida": true }
+        }
+      },
+      {
+        "id": "no_interferir",
+        "texto": "No haces nada. No miras. Ella está en otra dimensión y tú no vas a sacarla.",
+        "efectos": {
+          "goeDeltaCurrent": 0.15,
+          "goeDeltaRemaining": 0.12,
+          "varianzaMultiplier": 0.9,
+          "bondDelta": 4,
+          "narrativeFlags": { "ritmo_perfecto_no_interferencia": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_late_fatiga_01",
+    "tipo": "momento_competicion",
+    "trigger": "late",
+    "titulo": "Las piernas en el último minuto",
+    "descripcion": "Último minuto. Cuarenta y cinco segundos de intensidad alta por delante. Las piernas le pesan. Se le nota en las entradas a los pasos. Queda la secuencia coreográfica y el combo de cierre.",
+    "condiciones": { "minVinculo": 15 },
+    "opciones": [
+      {
+        "id": "recordar_respiracion",
+        "texto": "Exhalación larga y visible — que ella te vea. «Respira como yo.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.2,
+          "goeDeltaRemaining": 0.08,
+          "varianzaMultiplier": 0.85,
+          "bondDelta": 2,
+          "narrativeFlags": { "respiracion_sincronizada_late": true }
+        }
+      },
+      {
+        "id": "recordar_motivo",
+        "texto": "Te golpeas suavemente el esternón. El gesto que acordasteis para «por qué patinas».",
+        "efectos": {
+          "goeDeltaCurrent": 0.25,
+          "goeDeltaRemaining": 0.05,
+          "bondDelta": 3,
+          "narrativeFlags": { "motivo_recordado_late": true }
+        }
+      },
+      {
+        "id": "confiar_en_autonomia",
+        "texto": "No haces nada. Ella sabe lo que le queda. Tú ya hiciste tu parte.",
+        "efectos": {
+          "goeDeltaCurrent": 0.05,
+          "varianzaMultiplier": 1.1,
+          "bondDelta": 3,
+          "narrativeFlags": { "autonomia_confiada_late": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_late_combo_final_01",
+    "tipo": "momento_competicion",
+    "trigger": "late",
+    "titulo": "El combo de cierre",
+    "descripcion": "Treinta segundos. Combo final: Lutz-loop-Salchow. Si lo rota limpio, se sube al podio de la temporada. Si se cae, sigue en la pelea por puntuación pero fuera del top-3. Está mirando a la pared del fondo. Coge aire.",
+    "condiciones": { "minVinculo": 30 },
+    "opciones": [
+      {
+        "id": "confiar_entrenamiento",
+        "texto": "No gesticules. Has entrenado ese combo cuatrocientas veces. Confía.",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "varianzaMultiplier": 0.75,
+          "bondDelta": 2,
+          "narrativeFlags": { "combo_final_confianza_pura": true }
+        }
+      },
+      {
+        "id": "correccion_tecnica",
+        "texto": "«Hombros.» Una palabra, la que os enseñó la corrección clave en el último mes.",
+        "efectos": {
+          "goeDeltaCurrent": 0.4,
+          "varianzaMultiplier": 0.9,
+          "bondDelta": 1,
+          "narrativeFlags": { "combo_final_correccion_tecnica": true }
+        }
+      },
+      {
+        "id": "opcion_plan_b",
+        "texto": "Haces la señal acordada: «Baja a triple si lo dudas.» Plan B con honor.",
+        "efectos": {
+          "goeDeltaCurrent": -0.2,
+          "varianzaMultiplier": 0.6,
+          "bondDelta": 3,
+          "narrativeFlags": { "combo_final_plan_b_ofrecido": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_late_programa_limpio_01",
+    "tipo": "momento_competicion",
+    "trigger": "late",
+    "titulo": "Tres elementos y en casa",
+    "descripcion": "Programa limpio hasta aquí. Ni una caída, ni un arañazo. Los comentaristas han dejado de hablar porque saben que cualquier frase puede ser el gafe. Quedan tres elementos.",
+    "condiciones": { "minVinculo": 20 },
+    "opciones": [
+      {
+        "id": "suspender_presion",
+        "texto": "«Todo es ganancia desde aquí. Disfruta lo que queda.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.25,
+          "goeDeltaRemaining": 0.12,
+          "varianzaMultiplier": 0.8,
+          "bondDelta": 2,
+          "narrativeFlags": { "presion_suspendida_final": true }
+        }
+      },
+      {
+        "id": "recordar_cierre",
+        "texto": "«Termina con la cabeza alta. Que los últimos diez segundos sean los más grandes.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "goeDeltaRemaining": 0.1,
+          "varianzaMultiplier": 0.95,
+          "bondDelta": 1,
+          "narrativeFlags": { "cierre_dirigido_grandeza": true }
+        }
+      },
+      {
+        "id": "mantener_vigilancia",
+        "texto": "Mantienes la cara de concentración. Todavía queda mucho. No relajar nada.",
+        "efectos": {
+          "goeDeltaCurrent": 0.05,
+          "varianzaMultiplier": 1.1,
+          "bondDelta": -1,
+          "narrativeFlags": { "vigilancia_hasta_final": true }
+        }
+      }
+    ]
+  },
+  {
+    "id": "momento_late_recuperar_error_01",
+    "tipo": "momento_competicion",
+    "trigger": "late",
+    "titulo": "Después del error del minuto tres",
+    "descripcion": "Triple Salchow en pop. Error visible en la repetición del marcador. Queda el combo final y un giro. No es catastrófico pero le ha costado dos puntos. La cara todavía trae la onda del error.",
+    "condiciones": { "minVinculo": 25 },
+    "opciones": [
+      {
+        "id": "perdonar_visible",
+        "texto": "Sonrisa abierta y pulgar arriba. «Sigue. Ese punto ya está olvidado.»",
+        "efectos": {
+          "goeDeltaCurrent": 0.25,
+          "goeDeltaRemaining": 0.1,
+          "varianzaMultiplier": 0.85,
+          "bondDelta": 3,
+          "narrativeFlags": { "error_perdonado_visible_late": true }
+        }
+      },
+      {
+        "id": "gesto_ignorar",
+        "texto": "Miras a otro lado un momento. Le das espacio para procesar sin testigo.",
+        "efectos": {
+          "goeDeltaCurrent": 0.1,
+          "goeDeltaRemaining": 0.08,
+          "bondDelta": 2,
+          "narrativeFlags": { "error_ignorado_discreto_late": true }
+        }
+      },
+      {
+        "id": "ajuste_urgente",
+        "texto": "Le indicas el gesto técnico para el combo final. Corrección inmediata, sin suavizantes.",
+        "efectos": {
+          "goeDeltaCurrent": 0.3,
+          "varianzaMultiplier": 1.1,
+          "bondDelta": 0,
+          "narrativeFlags": { "error_corregido_tecnicamente_late": true }
+        }
+      }
+    ]
+  }
+]
