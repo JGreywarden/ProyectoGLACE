@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  applyMomentToResult,
   computeGOE,
   computeTES,
   computeTESElement,
@@ -13,7 +14,9 @@ import { DEFAULT_SKATER_DATA } from '@/types/skater'
 import { DEFAULT_PROGRAM_DATA } from '@/types/program'
 import type { SkaterData, TechnicalAttributes, PsychologicalAttributes, WeeklyState, PhysicalPermanentAttributes } from '@/types/skater'
 import type { ProgramData, ProgramElement } from '@/types/program'
+import type { CompetitionResult } from '@/types/season'
 import type { Judge } from '@/services/dataService'
+import type { MomentOutcome } from '@/features/narrative'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
 
@@ -230,5 +233,85 @@ describe('simulate', () => {
     const result = simulate(skater, program, judges, {}, rng)
     expect(result.total).toBeGreaterThanOrEqual(150)
     expect(result.total).toBeLessThanOrEqual(220)
+  })
+})
+
+// ─── applyMomentToResult ──────────────────────────────────────────────────────
+
+describe('applyMomentToResult', () => {
+  // every salto element gets factor 0.10 (ELEMENT_GOE_TES_FACTOR['salto'])
+  const elements: ProgramElement[] = [
+    { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 1, esCombinacion: false, rotaciones: 3 },
+    { tipo: 'salto', tipoSalto: 'flip',    dificultadBase: 5.3, posicionEnPrograma: 2, esCombinacion: false, rotaciones: 3 },
+    { tipo: 'salto', tipoSalto: 'lutz',    dificultadBase: 5.9, posicionEnPrograma: 3, esCombinacion: false, rotaciones: 3 },
+  ]
+  const baseResult: CompetitionResult = {
+    id: 'k-s1w15', skaterId: 'k', semana: 15,
+    nombreCompeticion: 'Test', tipo: 'nacional',
+    tes: 100, pcs: 80, pcsDetalle: { sk: 8, tr: 8, pe: 8, co: 8, in: 8 },
+    total: 180, posicion: 1, caidas: 0, deducciones: 0,
+  }
+
+  it('adds goeBonusCurrent only to the element at fromElementIndex', () => {
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 1.0, goeBonusRemaining: 0,
+      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+    }
+    const next = applyMomentToResult(baseResult, outcome, 0, elements)
+    // ΔTES = 4.2 × 0.10 × 1.0 = 0.42
+    expect(next.tes).toBeCloseTo(100.42, 5)
+    expect(next.total).toBeCloseTo(180.42, 5)
+  })
+
+  it('adds goeBonusRemaining to every element after fromElementIndex', () => {
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 0, goeBonusRemaining: 0.3,
+      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+    }
+    const next = applyMomentToResult(baseResult, outcome, 0, elements)
+    // ΔTES = (5.3 + 5.9) × 0.10 × 0.3 = 0.336
+    expect(next.tes).toBeCloseTo(100.336, 4)
+  })
+
+  it('does not mutate the input result', () => {
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 0.5, goeBonusRemaining: 0.1,
+      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+    }
+    const before = JSON.stringify(baseResult)
+    applyMomentToResult(baseResult, outcome, 1, elements)
+    expect(JSON.stringify(baseResult)).toBe(before)
+  })
+
+  it('is a no-op when programElements is empty', () => {
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 1, goeBonusRemaining: 1,
+      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+    }
+    const next = applyMomentToResult(baseResult, outcome, 0, [])
+    expect(next.tes).toBe(baseResult.tes)
+    expect(next.total).toBe(baseResult.total)
+  })
+
+  it('clamps fromElementIndex out of range to a valid position', () => {
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 1.0, goeBonusRemaining: 0,
+      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+    }
+    // index 99 is treated as last (index 2)
+    const next = applyMomentToResult(baseResult, outcome, 99, elements)
+    // ΔTES = 5.9 × 0.10 × 1.0 = 0.59
+    expect(next.tes).toBeCloseTo(100.59, 5)
+  })
+
+  it('preserves pcs and deducciones in the recomputed total', () => {
+    const r: CompetitionResult = { ...baseResult, deducciones: 2 }
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 0.5, goeBonusRemaining: 0,
+      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+    }
+    const next = applyMomentToResult(r, outcome, 1, elements)
+    // total = tes' + pcs - deducciones = 100.265 + 80 - 2 = 178.265
+    expect(next.total).toBeCloseTo(next.tes + next.pcs - next.deducciones, 5)
   })
 })
