@@ -38,6 +38,11 @@
   --c-gold:    #c9a84c; /* medals, warnings, sponsor tiers */
   --c-danger:  #c95a5a; /* injuries, losses, critical alerts */
   --c-success: #5bc97a; /* pb, wins, positive progression */
+
+  /* game-semantic — colours that carry narrative meaning (GDD cap. 18) */
+  --c-semantic-technical: #2a5fa8; /* performance data, technical attributes */
+  --c-semantic-human:     #c8922a; /* human moments, narrative events */
+  --c-semantic-bond:      #7b5ea7; /* exclusive use for bond and bond-related UI */
 }
 
 /* ─── reset ───────────────────────────────────────────────────────────────── */
@@ -57,6 +62,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'ss01', 'ss02';
 }
 
 /* ─── scrollbar ───────────────────────────────────────────────────────────── */
@@ -67,8 +73,14 @@ body {
 
 /* ─── focus ring ──────────────────────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--c-ice-500);
-  outline-offset: 2px;
+  outline: 1px solid var(--c-ice-300);
+  outline-offset: 3px;
+}
+
+/* ─── selection ───────────────────────────────────────────────────────────── */
+::selection {
+  background: var(--c-ice-600);
+  color: var(--c-text-primary);
 }
 
 /* ─── page transitions ────────────────────────────────────────────────────── */
@@ -80,3 +92,113 @@ body {
 .glace-page-fade {
   animation: glace-fade-in 200ms ease-out both;
 }
+
+/* ─── atmosphere ──────────────────────────────────────────────────────────── */
+
+/* film grain overlay — adds the analog "snow on the rink" texture.
+   the data: URL is a tiny SVG with feTurbulence; renders at any scale. */
+.glace-grain {
+  position: relative;
+  isolation: isolate;
+}
+.glace-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1   0 0 0 0 1   0 0 0 0 1   0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* radial cold light — subtle vignette suggesting overhead rink lights */
+.glace-vignette {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(78, 159, 200, 0.06), transparent 70%),
+    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(12, 18, 32, 0.6), transparent 70%),
+    var(--c-bg-deep);
+}
+
+/* hairline — single 1px line that respects the dark theme */
+.glace-hairline {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--c-border) 15%,
+    var(--c-border-strong) 50%,
+    var(--c-border) 85%,
+    transparent 100%);
+  height: 1px;
+}
+
+/* vertical hairline */
+.glace-hairline-v {
+  background: linear-gradient(180deg,
+    transparent 0%,
+    var(--c-border) 15%,
+    var(--c-border-strong) 50%,
+    var(--c-border) 85%,
+    transparent 100%);
+  width: 1px;
+}
+
+/* ─── staggered reveals — used on page mount ──────────────────────────────── */
+
+@keyframes glace-reveal-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glace-reveal-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes glace-reveal-letter {
+  from { opacity: 0; letter-spacing: 0.4em; filter: blur(4px); }
+  to   { opacity: 1; letter-spacing: 0;     filter: blur(0); }
+}
+
+.glace-reveal {
+  animation: glace-reveal-up 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.glace-reveal-fade {
+  animation: glace-reveal-fade 800ms ease-out both;
+}
+.glace-reveal-letter {
+  animation: glace-reveal-letter 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.glace-stagger-1 { animation-delay:  60ms; }
+.glace-stagger-2 { animation-delay: 140ms; }
+.glace-stagger-3 { animation-delay: 220ms; }
+.glace-stagger-4 { animation-delay: 320ms; }
+.glace-stagger-5 { animation-delay: 440ms; }
+.glace-stagger-6 { animation-delay: 580ms; }
+
+/* ─── number — gigantic display number used as a visual anchor ────────────── */
+
+.glace-number {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 300;
+  font-feature-settings: 'lnum' 1, 'tnum' 1;
+  letter-spacing: -0.04em;
+  line-height: 0.85;
+}
+
+/* ─── eyebrow — small uppercase label that runs above titles ───────────────── */
+
+.glace-eyebrow {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  color: var(--c-text-muted);
+}
+
+/* ─── decorative caret used as a delimiter in nordic-noir layouts ────────── */
+.glace-caret::before { content: '— '; color: var(--c-text-muted); }
+
+/* ─── interactive hover translate ─────────────────────────────────────────── */
+.glace-lift { transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), border-color 200ms ease, color 200ms ease, background-color 200ms ease; }
+.glace-lift:hover { transform: translateY(-2px); }

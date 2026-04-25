@@ -6,5 +6,6 @@ export {
   validateProgramISU,
   computeProjectedScores,
   extractMusicInfo,
+  getJumpBaseValue,
 } from './service'
 export { useProgramStore } from './store'

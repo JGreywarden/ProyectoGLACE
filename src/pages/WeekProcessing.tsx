@@ -15,7 +15,6 @@ export function WeekProcessing() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // StrictMode mounts effects twice in dev; guard against a double run
     if (fired.current) return
     fired.current = true
 
@@ -76,9 +75,6 @@ export function WeekProcessing() {
           season: result.season,
         })
 
-        // WEEK_PROCESSING only transitions to WEEKLY_PLANNING | NARRATIVE_EVENT |
-        // COMPETITION. End-of-season handling lives in WeeklyPlanning, which can
-        // dispatch to SEASON_END when it detects the condition.
         if (result.competitionResult) {
           useGameStore.getState().changeState(GameState.COMPETITION)
           navigate('/competicion', { replace: true })
@@ -100,17 +96,23 @@ export function WeekProcessing() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6 text-center">
-        <p className="text-xs uppercase tracking-widest text-content-muted">procesando semana</p>
-        <h1 className="text-2xl text-content-primary">{error}</h1>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 glace-vignette px-6 text-center">
+        <span className="glace-eyebrow text-danger">— procesando semana</span>
+        <p className="font-display italic text-2xl text-content-primary max-w-lg">{error}</p>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3">
-      <p className="text-xs uppercase tracking-widest text-content-muted">procesando semana</p>
-      <h1 className="text-3xl text-content-primary">Calculando efectos…</h1>
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 glace-vignette glace-grain px-6">
+      <span className="glace-eyebrow">— procesando semana</span>
+      <h1 className="glace-reveal-letter font-display text-5xl text-content-primary text-center">
+        Calculando los efectos del hielo
+      </h1>
+      <div className="glace-hairline w-32" />
+      <p className="font-display italic text-content-secondary">
+        atributos · vínculo · fatiga · narrativa
+      </p>
     </div>
   )
 }

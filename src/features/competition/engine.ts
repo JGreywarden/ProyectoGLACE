@@ -16,8 +16,9 @@ import {
 } from '@/lib/balance'
 import type { SkaterData } from '@/types/skater'
 import type { ProgramData, ProgramElement } from '@/types/program'
-import type { PCSBreakdown } from '@/types/season'
+import type { CompetitionResult, PCSBreakdown } from '@/types/season'
 import type { Judge } from '@/services/dataService'
+import type { MomentOutcome } from '@/features/narrative'
 
 // ─── rng ──────────────────────────────────────────────────────────────────────
 
@@ -265,6 +266,44 @@ export interface SimulationResult {
   total:       number
   caidas:      number
   deducciones: number
+}
+
+// ─── moment patching ──────────────────────────────────────────────────────────
+
+/**
+ * Applies a Moment outcome to an already-computed CompetitionResult by re-scoring
+ * TES on the affected elements. The marginal effect of a +δ on an element's GOE
+ * is `dificultadBase × factor × δ`; we sum that across:
+ *   - element at fromElementIndex: gets goeBonusCurrent
+ *   - elements after fromElementIndex: each gets goeBonusRemaining
+ *
+ * Pure: returns a new CompetitionResult; never mutates the input. PCS is not
+ * affected by Moments in Fase 1. varianzaMultiplier is a UI hint only here.
+ * bondDelta and flagsPatch are applied by the caller (page) at gameStore level.
+ */
+export function applyMomentToResult(
+  result: CompetitionResult,
+  outcome: MomentOutcome,
+  fromElementIndex: number,
+  programElements: readonly ProgramElement[],
+): CompetitionResult {
+  if (programElements.length === 0) return { ...result }
+  const idx = Math.max(0, Math.min(fromElementIndex, programElements.length - 1))
+
+  let tesDelta = 0
+  for (let i = 0; i < programElements.length; i++) {
+    const el = programElements[i]
+    const factor = ELEMENT_GOE_TES_FACTOR[el.tipo] ?? 0.1
+    if (i === idx) {
+      tesDelta += el.dificultadBase * factor * outcome.goeBonusCurrent
+    } else if (i > idx) {
+      tesDelta += el.dificultadBase * factor * outcome.goeBonusRemaining
+    }
+  }
+
+  const tes = result.tes + tesDelta
+  const total = tes + result.pcs - result.deducciones
+  return { ...result, tes, total }
 }
 
 /** full competition simulation: TES + PCS − deducciones. posición se calcula fuera. */

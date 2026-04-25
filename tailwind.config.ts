@@ -4,6 +4,14 @@ import type { Config } from 'tailwindcss'
 // this lets us swap themes without rebuilding the class graph
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  // glace-stagger-N classes are CSS-only (defined in index.css), but they're
+  // interpolated as template literals in JSX so tailwind's content scanner
+  // doesn't see them. Safelist isn't strictly needed for non-tailwind classes,
+  // but listed here so the relationship is documented.
+  safelist: [
+    'glace-stagger-1', 'glace-stagger-2', 'glace-stagger-3',
+    'glace-stagger-4', 'glace-stagger-5', 'glace-stagger-6',
+  ],
   darkMode: 'class',
   theme: {
     extend: {
@@ -44,6 +52,12 @@ const config: Config = {
         gold:    'var(--c-gold)',
         danger:  'var(--c-danger)',
         success: 'var(--c-success)',
+        // game-semantic — narrative meaning (GDD cap. 18)
+        semantic: {
+          technical: 'var(--c-semantic-technical)',
+          human:     'var(--c-semantic-human)',
+          bond:      'var(--c-semantic-bond)',
+        },
       },
       fontFamily: {
         sans:    ['DM Sans', 'system-ui', 'sans-serif'],
