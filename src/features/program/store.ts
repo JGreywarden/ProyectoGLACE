@@ -1,5 +1,6 @@
-// program designer store — holds the in-progress draft and confirmed catalogue.
-// business logic lives in service.ts; the store only persists state and dispatches actions.
+// program designer store — drafts, music info, projected scores and violations
+// are kept independently for each program type ('corto' / 'libre') so the player
+// can edit both in parallel without one wiping the other.
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
@@ -17,29 +18,44 @@ import type {
   ValidationViolation,
 } from './types'
 
-// ─── store interface ──────────────────────────────────────────────────────────
+// ─── per-tipo dictionaries ────────────────────────────────────────────────────
+
+type PerType<T> = Partial<Record<ProgramType, T>>
 
 interface ProgramState {
-  currentDraft:       ProgramData | null
-  musicInfo:          MusicInfo | null
-  projectedScores:    ProjectedScores | null
-  violations:         ValidationViolation[]
+  /** which tipo is currently being edited; mutators target this slot */
+  activeType:        ProgramType
+  drafts:            PerType<ProgramData>
+  musicInfo:         PerType<MusicInfo>
+  projectedScores:   PerType<ProjectedScores>
+  violations:        PerType<ValidationViolation[]>
   /** confirmed programs indexed by skaterId; one corto + one libre per season */
-  confirmedPrograms:  Record<string, ProgramData[]>
+  confirmedPrograms: Record<string, ProgramData[]>
 
-  startNewProgram:    (tipo: ProgramType, skaterId: string, temporada: number, musicInfo: MusicInfo) => void
-  updateElement:      (index: number, patch: Partial<ProgramElement>) => void
-  addElement:         (element: ProgramElement) => void
-  removeElement:      (index: number) => void
-  reorderElement:     (from: number, to: number) => void
-  setMusicInfo:       (info: MusicInfo) => void
-  recomputeScores:    (skater: SkaterData, judges?: readonly Judge[]) => void
-  /** validates the draft, appends it to confirmedPrograms[skaterId], clears the draft. throws when invalid. */
-  confirmProgram:     () => ProgramData
-  discardDraft:       () => void
+  setActiveType:    (tipo: ProgramType) => void
+  /** lazily creates a draft for the given tipo if one doesn't exist; never overwrites */
+  ensureDraft:      (tipo: ProgramType, skaterId: string, temporada: number, musicInfo: MusicInfo) => void
+  /** discards any draft for the given tipo and rebuilds it from defaults */
+  resetDraft:       (tipo: ProgramType, skaterId: string, temporada: number, musicInfo: MusicInfo) => void
+
+  // mutators — operate on drafts[activeType]
+  patchDraft:       (patch: Partial<ProgramData>) => void
+  updateElement:    (index: number, patch: Partial<ProgramElement>) => void
+  addElement:       (element: ProgramElement) => void
+  removeElement:    (index: number) => void
+  reorderElement:   (from: number, to: number) => void
+  setMusicInfo:     (info: MusicInfo) => void
+  /** computes projected scores for activeType — does NOT mutate the draft */
+  recomputeScores:  (skater: SkaterData, judges?: readonly Judge[]) => void
+
+  /** validates and confirms the activeType draft; throws when invalid. returns the saved program. */
+  confirmProgram:   () => ProgramData
+  /** drops only the activeType draft (and its derived state) */
+  discardDraft:     () => void
+
   /** finds a confirmed program by (skaterId, tipo, temporada) — null when missing */
-  getProgram:         (skaterId: string, tipo: ProgramType, temporada: number) => ProgramData | null
-  /** rehydrate from a loaded SaveFile; resets the draft */
+  getProgram:       (skaterId: string, tipo: ProgramType, temporada: number) => ProgramData | null
+  /** rehydrate from a loaded SaveFile; resets all drafts */
   hydrateConfirmedPrograms: (programs: Record<string, ProgramData[]>) => void
 }
 
@@ -56,169 +72,214 @@ function withRenumberedPositions(elementos: readonly ProgramElement[]): ProgramE
   return elementos.map((e, i) => ({ ...e, posicionEnPrograma: i + 1 }))
 }
 
-function refreshDraftDerivatives(draft: ProgramData): {
-  draft:      ProgramData
-  violations: ValidationViolation[]
-} {
-  const violations = validateProgramISU(draft).violations
-  return { draft, violations }
-}
-
 // ─── store ────────────────────────────────────────────────────────────────────
 
 export const useProgramStore = create<ProgramState>()(
   devtools(
-    (set, get) => ({
-      currentDraft:      null,
-      musicInfo:         null,
-      projectedScores:   null,
-      violations:        [],
-      confirmedPrograms: {},
-
-      startNewProgram: (tipo, skaterId, temporada, musicInfo) => {
-        const draft = createDefaultProgram(tipo, skaterId, temporada, musicInfo)
-        const { violations } = refreshDraftDerivatives(draft)
+    (set, get) => {
+      // applies a draft mutation for the active tipo and refreshes its violations.
+      // projectedScores is intentionally preserved here — recomputeScores is the
+      // single writer for that field, called from a useEffect with skater context.
+      function commitDraft(next: ProgramData) {
+        const tipo = get().activeType
         set(
-          { currentDraft: draft, musicInfo, projectedScores: null, violations },
+          (s) => ({
+            drafts:     { ...s.drafts,     [tipo]: next },
+            violations: { ...s.violations, [tipo]: validateProgramISU(next).violations },
+          }),
           false,
-          'program/startNewProgram',
+          'program/commitDraft',
         )
-      },
+      }
 
-      updateElement: (index, patch) => {
-        const draft = get().currentDraft
-        if (!draft) return
-        const elementos = draft.elementos.map((e, i) => i === index ? { ...e, ...patch } : e)
-        const next = { ...draft, elementos }
-        const { violations } = refreshDraftDerivatives(next)
-        set(
-          { currentDraft: next, violations, projectedScores: null },
-          false,
-          'program/updateElement',
-        )
-      },
+      function activeDraft(): ProgramData | null {
+        return get().drafts[get().activeType] ?? null
+      }
 
-      addElement: (element) => {
-        const draft = get().currentDraft
-        if (!draft) return
-        const elementos = withRenumberedPositions([...draft.elementos, element])
-        const next = { ...draft, elementos }
-        const { violations } = refreshDraftDerivatives(next)
-        set(
-          { currentDraft: next, violations, projectedScores: null },
-          false,
-          'program/addElement',
-        )
-      },
+      return {
+        activeType:        'libre',
+        drafts:            {},
+        musicInfo:         {},
+        projectedScores:   {},
+        violations:        {},
+        confirmedPrograms: {},
 
-      removeElement: (index) => {
-        const draft = get().currentDraft
-        if (!draft) return
-        const filtered = draft.elementos.filter((_, i) => i !== index)
-        const elementos = withRenumberedPositions(filtered)
-        const next = { ...draft, elementos }
-        const { violations } = refreshDraftDerivatives(next)
-        set(
-          { currentDraft: next, violations, projectedScores: null },
-          false,
-          'program/removeElement',
-        )
-      },
+        setActiveType: (tipo) => {
+          set({ activeType: tipo }, false, 'program/setActiveType')
+        },
 
-      reorderElement: (from, to) => {
-        const draft = get().currentDraft
-        if (!draft) return
-        if (from === to) return
-        if (from < 0 || from >= draft.elementos.length) return
-        if (to   < 0 || to   >= draft.elementos.length) return
-        const reordered = reorderArray(draft.elementos, from, to)
-        const elementos = withRenumberedPositions(reordered)
-        const next = { ...draft, elementos }
-        const { violations } = refreshDraftDerivatives(next)
-        set(
-          { currentDraft: next, violations, projectedScores: null },
-          false,
-          'program/reorderElement',
-        )
-      },
-
-      setMusicInfo: (info) => {
-        const draft = get().currentDraft
-        if (!draft) {
-          set({ musicInfo: info }, false, 'program/setMusicInfo')
-          return
-        }
-        const next = {
-          ...draft,
-          tituloProgramatico: info.title,
-          musicaGenero:       info.genero ?? draft.musicaGenero,
-        }
-        set({ musicInfo: info, currentDraft: next }, false, 'program/setMusicInfo')
-      },
-
-      recomputeScores: (skater, judges) => {
-        const draft = get().currentDraft
-        if (!draft) return
-        const projected = computeProjectedScores(draft, skater, judges)
-        const next = {
-          ...draft,
-          tesProyectado: projected.tes,
-          pcsProyectado: projected.pcs,
-        }
-        set(
-          { currentDraft: next, projectedScores: projected },
-          false,
-          'program/recomputeScores',
-        )
-      },
-
-      confirmProgram: () => {
-        const draft = get().currentDraft
-        if (!draft) throw new Error('confirmProgram: no hay borrador activo')
-        const result = validateProgramISU(draft)
-        if (!result.valid) {
-          throw new Error(
-            `confirmProgram: programa inválido — ${result.violations.map(v => v.mensaje).join('; ')}`,
+        ensureDraft: (tipo, skaterId, temporada, musicInfo) => {
+          if (get().drafts[tipo]) return
+          const draft = createDefaultProgram(tipo, skaterId, temporada, musicInfo)
+          set(
+            (s) => ({
+              drafts:     { ...s.drafts,     [tipo]: draft },
+              musicInfo:  { ...s.musicInfo,  [tipo]: musicInfo },
+              violations: { ...s.violations, [tipo]: validateProgramISU(draft).violations },
+            }),
+            false,
+            'program/ensureDraft',
           )
-        }
-        const skaterId = draft.skaterId
-        const existing = get().confirmedPrograms[skaterId] ?? []
-        // replace any existing program of the same (tipo, temporada); otherwise append
-        const filtered = existing.filter(
-          p => !(p.tipo === draft.tipo && p.temporada === draft.temporada),
-        )
-        const updated = [...filtered, draft]
-        set(
-          {
-            confirmedPrograms: { ...get().confirmedPrograms, [skaterId]: updated },
-            currentDraft:      null,
-            musicInfo:         null,
-            projectedScores:   null,
-            violations:        [],
-          },
-          false,
-          'program/confirmProgram',
-        )
-        return draft
-      },
+        },
 
-      discardDraft: () => {
-        set(
-          { currentDraft: null, musicInfo: null, projectedScores: null, violations: [] },
-          false,
-          'program/discardDraft',
-        )
-      },
+        resetDraft: (tipo, skaterId, temporada, musicInfo) => {
+          const draft = createDefaultProgram(tipo, skaterId, temporada, musicInfo)
+          set(
+            (s) => ({
+              drafts:          { ...s.drafts,          [tipo]: draft },
+              musicInfo:       { ...s.musicInfo,       [tipo]: musicInfo },
+              violations:      { ...s.violations,      [tipo]: validateProgramISU(draft).violations },
+              projectedScores: { ...s.projectedScores, [tipo]: undefined },
+            }),
+            false,
+            'program/resetDraft',
+          )
+        },
 
-      getProgram: (skaterId, tipo, temporada) => {
-        const list = get().confirmedPrograms[skaterId] ?? []
-        return list.find(p => p.tipo === tipo && p.temporada === temporada) ?? null
-      },
+        patchDraft: (patch) => {
+          const draft = activeDraft()
+          if (!draft) return
+          commitDraft({ ...draft, ...patch })
+        },
 
-      hydrateConfirmedPrograms: (programs) => {
-        set({ confirmedPrograms: programs }, false, 'program/hydrateConfirmedPrograms')
-      },
-    }),
+        updateElement: (index, patch) => {
+          const draft = activeDraft()
+          if (!draft) return
+          const elementos = draft.elementos.map((e, i) => i === index ? { ...e, ...patch } : e)
+          commitDraft({ ...draft, elementos })
+        },
+
+        addElement: (element) => {
+          const draft = activeDraft()
+          if (!draft) return
+          const elementos = withRenumberedPositions([...draft.elementos, element])
+          commitDraft({ ...draft, elementos })
+        },
+
+        removeElement: (index) => {
+          const draft = activeDraft()
+          if (!draft) return
+          const elementos = withRenumberedPositions(draft.elementos.filter((_, i) => i !== index))
+          commitDraft({ ...draft, elementos })
+        },
+
+        reorderElement: (from, to) => {
+          const draft = activeDraft()
+          if (!draft) return
+          if (from === to) return
+          if (from < 0 || from >= draft.elementos.length) return
+          if (to   < 0 || to   >= draft.elementos.length) return
+          const elementos = withRenumberedPositions(reorderArray(draft.elementos, from, to))
+          commitDraft({ ...draft, elementos })
+        },
+
+        setMusicInfo: (info) => {
+          const tipo = get().activeType
+          const draft = activeDraft()
+          if (!draft) {
+            set(
+              (s) => ({ musicInfo: { ...s.musicInfo, [tipo]: info } }),
+              false,
+              'program/setMusicInfo',
+            )
+            return
+          }
+          const next: ProgramData = {
+            ...draft,
+            tituloProgramatico: info.title,
+            musicaGenero:       info.genero ?? draft.musicaGenero,
+          }
+          set(
+            (s) => ({
+              musicInfo:  { ...s.musicInfo,  [tipo]: info },
+              drafts:     { ...s.drafts,     [tipo]: next },
+              violations: { ...s.violations, [tipo]: validateProgramISU(next).violations },
+            }),
+            false,
+            'program/setMusicInfo',
+          )
+        },
+
+        recomputeScores: (skater, judges) => {
+          const tipo = get().activeType
+          const draft = activeDraft()
+          if (!draft) return
+          const projected = computeProjectedScores(draft, skater, judges)
+          set(
+            (s) => ({ projectedScores: { ...s.projectedScores, [tipo]: projected } }),
+            false,
+            'program/recomputeScores',
+          )
+        },
+
+        confirmProgram: () => {
+          const tipo = get().activeType
+          const draft = activeDraft()
+          if (!draft) throw new Error('confirmProgram: no hay borrador activo')
+          const result = validateProgramISU(draft)
+          if (!result.valid) {
+            throw new Error(
+              `confirmProgram: programa inválido — ${result.violations.map(v => v.mensaje).join('; ')}`,
+            )
+          }
+          // bake the latest projected scores into the persisted snapshot
+          const projected = get().projectedScores[tipo]
+          const snapshot: ProgramData = projected
+            ? { ...draft, tesProyectado: projected.tes, pcsProyectado: projected.pcs }
+            : draft
+
+          const skaterId = snapshot.skaterId
+          const existing = get().confirmedPrograms[skaterId] ?? []
+          // replace any existing program of the same (tipo, temporada); otherwise append
+          const filtered = existing.filter(
+            p => !(p.tipo === snapshot.tipo && p.temporada === snapshot.temporada),
+          )
+          set(
+            (s) => ({
+              confirmedPrograms: { ...s.confirmedPrograms, [skaterId]: [...filtered, snapshot] },
+              // keep the draft alive so the player can keep iterating after saving
+              drafts:            { ...s.drafts, [tipo]: snapshot },
+            }),
+            false,
+            'program/confirmProgram',
+          )
+          return snapshot
+        },
+
+        discardDraft: () => {
+          const tipo = get().activeType
+          set(
+            (s) => ({
+              drafts:          { ...s.drafts,          [tipo]: undefined },
+              musicInfo:       { ...s.musicInfo,       [tipo]: undefined },
+              violations:      { ...s.violations,      [tipo]: undefined },
+              projectedScores: { ...s.projectedScores, [tipo]: undefined },
+            }),
+            false,
+            'program/discardDraft',
+          )
+        },
+
+        getProgram: (skaterId, tipo, temporada) => {
+          const list = get().confirmedPrograms[skaterId] ?? []
+          return list.find(p => p.tipo === tipo && p.temporada === temporada) ?? null
+        },
+
+        hydrateConfirmedPrograms: (programs) => {
+          set(
+            {
+              confirmedPrograms: programs,
+              drafts:            {},
+              musicInfo:         {},
+              violations:        {},
+              projectedScores:   {},
+            },
+            false,
+            'program/hydrateConfirmedPrograms',
+          )
+        },
+      }
+    },
     { name: 'glace/program' },
   ),
 )

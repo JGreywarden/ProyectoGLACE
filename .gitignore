@@ -7,3 +7,6 @@ dist/
 
 # system
 .DS_Store
+
+# Claude Code per-machine settings — keep launch.json (shared preview config)
+.claude/settings.local.json

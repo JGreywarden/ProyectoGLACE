@@ -3,6 +3,7 @@
 
 import type { FaseSeason } from '@/types/season'
 import type { InstallationId } from '@/types/club'
+import traitsRaw from '@/data/traits.json'
 
 // ─── event types ──────────────────────────────────────────────────────────────
 
@@ -331,9 +332,13 @@ export async function getJudgePanel(competitionId: string): Promise<Judge[]> {
     .slice(0, 9)
 }
 
+// traits live as a compile-time JSON import: needed synchronously by athlete
+// service, no runtime fetch, single source of truth.
+const TRAITS_STATIC = traitsRaw as TraitData[]
+
 /** returns the full trait catalog including mutation conditions */
 export async function getAllTraits(): Promise<TraitData[]> {
-  return load<TraitData>('/data/traits.json')
+  return TRAITS_STATIC
 }
 
 /** returns the static data for one installation (all 4 level effects) or null if not found */
@@ -391,9 +396,7 @@ export async function preloadAll(): Promise<void> {
   const paths = [
     ...EVENT_TYPES.map(t => EVENT_PATHS[t]),
     '/data/judges.json',
-    '/data/traits.json',
     '/data/installations.json',
-    '/data/skaters.json',
     '/data/competitions.json',
     '/data/music_library.json',
   ]

@@ -28,6 +28,9 @@ interface NarrativeState {
 
   loadPool:      () => Promise<void>
   triggerEvent:  (ctx: NarrativeContext, rng?: () => number) => NarrativeEvent | null
+  /** publishes an externally-selected event into the store (used by the week orchestrator,
+   *  which selects events through runWeekWithPool but cannot mutate this store directly) */
+  commitWeeklyEvent: (event: NarrativeEvent, ctx: NarrativeContext) => void
   triggerMoment: (trigger: MomentoTrigger, ctx: NarrativeContext, rng?: () => number) => NarrativeEvent | null
   resolveChoice: (optionId: string, rng?: () => number) => EventOutcome | MomentOutcome | null
   resetEvent:    () => void
@@ -70,6 +73,23 @@ export const useNarrativeStore = create<NarrativeState>()(
           'narrative/triggerEvent',
         )
         return event
+      },
+
+      commitWeeklyEvent: (event, ctx) => {
+        const { lastEmittedBySubtype, emittedEvents } = get()
+        set(
+          {
+            currentEvent:         event,
+            lastContext:          ctx,
+            emittedEvents:        [...emittedEvents, event.id],
+            lastEmittedBySubtype: {
+              ...lastEmittedBySubtype,
+              [event.tipo]: ctx.season.semanaActual,
+            },
+          },
+          false,
+          'narrative/commitWeeklyEvent',
+        )
       },
 
       triggerMoment: (trigger, ctx, rng = Math.random) => {

@@ -15,14 +15,38 @@ export function NarrativeEvent() {
     if (outcome && 'skaterPatch' in outcome) {
       applyEventOutcome(outcome)
     }
-    useGameStore.getState().changeState(GameState.WEEKLY_PLANNING)
+    // end-of-season detection: if the week that just completed was the 30th
+    // historized week, jump straight to SEASON_END instead of returning to
+    // /semana (which would loop forever — see WeekProcessing flow).
+    const gs = useGameStore.getState()
+    const season = gs.currentSeason
+    if (season && season.historialSemanas.length >= 30) {
+      gs.changeState(GameState.SEASON_END)
+      navigate('/fin-temporada', { replace: true })
+      return
+    }
+    gs.changeState(GameState.WEEKLY_PLANNING)
     navigate('/semana', { replace: true })
   }
 
   if (!event) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg-deep">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bg-deep">
         <p className="font-display italic text-content-secondary">Sin evento activo.</p>
+        <button
+          type="button"
+          onClick={() => {
+            const gs = useGameStore.getState()
+            if (gs.currentState === GameState.NARRATIVE_EVENT) {
+              gs.changeState(GameState.WEEKLY_PLANNING)
+            }
+            navigate('/semana', { replace: true })
+          }}
+          className="group flex items-baseline gap-3 text-content-primary hover:text-ice-200"
+        >
+          <span className="font-display text-xl">volver al hub semanal</span>
+          <span className="transition-transform group-hover:translate-x-2">→</span>
+        </button>
       </div>
     )
   }

@@ -81,8 +81,21 @@ export function WeekProcessing() {
           return
         }
         if (result.triggeredEvent) {
+          // commit the externally-selected event so the NarrativeEvent screen
+          // finds it on mount (otherwise the player lands on "Sin evento activo")
+          useNarrativeStore.getState().commitWeeklyEvent(result.triggeredEvent, {
+            skater: result.skater,
+            season: result.season,
+            narrativeFlags,
+            emittedEvents,
+          })
           useGameStore.getState().changeState(GameState.NARRATIVE_EVENT)
           navigate('/evento', { replace: true })
+          return
+        }
+        if (result.seasonEndReached) {
+          useGameStore.getState().changeState(GameState.SEASON_END)
+          navigate('/fin-temporada', { replace: true })
           return
         }
         useGameStore.getState().changeState(GameState.WEEKLY_PLANNING)
@@ -96,9 +109,34 @@ export function WeekProcessing() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 glace-vignette px-6 text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 glace-vignette px-6 text-center">
         <span className="glace-eyebrow text-danger">— procesando semana</span>
         <p className="font-display italic text-2xl text-content-primary max-w-lg">{error}</p>
+        <div className="flex items-baseline gap-6">
+          <button
+            type="button"
+            onClick={() => {
+              const gs = useGameStore.getState()
+              if (gs.currentSkater && gs.currentSeason) {
+                gs.changeState(GameState.WEEKLY_PLANNING)
+                navigate('/semana', { replace: true })
+              } else {
+                // bypass changeState() — there's no legal transition from
+                // WEEK_PROCESSING back to MAIN_MENU, but we need to reset to
+                // a clean entry point for the player to start over
+                useGameStore.setState({
+                  currentState: GameState.MAIN_MENU,
+                  stateHistory: [GameState.MAIN_MENU],
+                })
+                navigate('/', { replace: true })
+              }
+            }}
+            className="group flex items-baseline gap-3 text-content-primary hover:text-ice-200"
+          >
+            <span className="font-display text-2xl">volver</span>
+            <span className="transition-transform group-hover:translate-x-2">→</span>
+          </button>
+        </div>
       </div>
     )
   }

@@ -8,11 +8,11 @@ import {
 import type { SkaterData, TraitDefinition, TraitId } from '@/types'
 import type { TechnicalAttributes } from '@/types/skater'
 
-import traitsRaw from '../../../public/data/traits.json'
+import traitsRaw from '@/data/traits.json'
 
 // ─── mutation lookup ──────────────────────────────────────────────────────────
 
-// built once at module load from public/data/traits.json
+// built once at module load from src/data/traits.json
 const MUTATION_DESTINATIONS = new Map<string, string>(
   (traitsRaw as Array<{ id: string; mutacion?: { traitDestino: string } }>)
     .flatMap(t =>

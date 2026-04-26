@@ -1,12 +1,28 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { GameState, useGameStore } from '@/stores/gameStore'
+import { useSaveStore } from '@/stores/saveStore'
+import { SaveSlotPicker } from '@/components/ui'
 
 export function MainMenu() {
   const navigate = useNavigate()
+  const slots            = useSaveStore(s => s.slots)
+  const loadSlotMetadata = useSaveStore(s => s.loadSlotMetadata)
+  const storageAvailable = useSaveStore(s => s.storageAvailable)
+  const [showLoad, setShowLoad] = useState(false)
+
+  useEffect(() => { loadSlotMetadata() }, [loadSlotMetadata])
+
+  const hasSaves = (slots[1] !== null) || (slots[2] !== null) || (slots[3] !== null)
 
   function startNewGame() {
     useGameStore.getState().changeState(GameState.COACH_CREATION)
     navigate('/nueva-partida')
+  }
+
+  function handleLoaded() {
+    // saveStore.loadGame() resets currentState to SESSION_RESUME atomically
+    navigate('/sesion', { replace: true })
   }
 
   return (
@@ -37,7 +53,7 @@ export function MainMenu() {
           </p>
         </div>
 
-        {/* action — col 10-12, anchored bottom right */}
+        {/* actions — col 10-12, anchored bottom right */}
         <div className="col-span-12 md:col-span-3 flex flex-col justify-end gap-6">
           <div className="glace-hairline-v hidden h-32 md:block" />
 
@@ -55,12 +71,47 @@ export function MainMenu() {
             </span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => setShowLoad(true)}
+            disabled={!storageAvailable}
+            className="group glace-reveal glace-stagger-5 flex flex-col items-end gap-2 text-right disabled:opacity-50 disabled:cursor-not-allowed"
+            title={
+              !storageAvailable
+                ? 'el navegador bloquea localStorage'
+                : hasSaves
+                  ? 'continuar una partida guardada'
+                  : 'no hay partidas guardadas'
+            }
+          >
+            <span className="glace-eyebrow text-content-secondary group-hover:text-ice-300 transition-colors">
+              continuar
+            </span>
+            <span className="font-display text-3xl text-content-secondary group-hover:text-ice-200 transition-colors">
+              Cargar partida
+              <span className="ml-2 inline-block transition-transform duration-300 group-hover:translate-x-2">→</span>
+            </span>
+            {!hasSaves && storageAvailable && (
+              <span className="text-[10px] uppercase tracking-[0.3em] text-content-disabled">
+                sin partidas guardadas
+              </span>
+            )}
+          </button>
+
           <div className="text-right text-[10px] uppercase tracking-[0.3em] text-content-disabled">
             sesión 20–40 min · sin instalación · sin login
           </div>
         </div>
 
       </div>
+
+      {showLoad && (
+        <SaveSlotPicker
+          mode="load"
+          onClose={() => setShowLoad(false)}
+          onLoaded={handleLoaded}
+        />
+      )}
     </div>
   )
 }

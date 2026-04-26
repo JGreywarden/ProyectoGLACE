@@ -9,7 +9,7 @@ import {
   useTrainingStore,
   type ActivityId,
 } from '@/features/training'
-import { BondMeter } from '@/components/ui'
+import { BondMeter, SaveSlotPicker } from '@/components/ui'
 import type { InstallationId, InstallationLevel } from '@/types/club'
 
 const ACTIVITIES: ActivityId[] = ['tecnico', 'fisico', 'mental', 'descanso', 'ensayo', 'dialogo']
@@ -61,6 +61,8 @@ export function WeeklyPlanning() {
   const clearSchedule = useTrainingStore(s => s.clearSchedule)
 
   const [pickerSlot, setPickerSlot] = useState<number | null>(null)
+  const [saveOpen,    setSaveOpen]   = useState(false)
+  const [loadOpen,    setLoadOpen]   = useState(false)
 
   useEffect(() => {
     if (skater && !schedule) clearSchedule(skater.id)
@@ -94,7 +96,11 @@ export function WeeklyPlanning() {
     setPickerSlot(null)
   }
   function advanceWeek() {
-    if (season!.semanaActual > 30) {
+    // end-of-season catch: once 30 weeks are in the history we can't process
+    // a 31st (validators forbid semana > 30). Route straight to SEASON_END.
+    // Also covers the case where a comp/event week wrapped up at week 30 and
+    // would otherwise re-process week 30 forever.
+    if (season!.semanaActual > 30 || season!.historialSemanas.length >= 30) {
       useGameStore.getState().changeState(GameState.SEASON_END)
       navigate('/fin-temporada', { replace: true })
       return
@@ -317,6 +323,13 @@ export function WeeklyPlanning() {
             <NavLine label="calendario isu" onClick={() => navigate('/calendario')} />
           </nav>
 
+          {/* persistence */}
+          <nav className="flex flex-col gap-2 glace-reveal glace-stagger-5">
+            <span className="glace-eyebrow">— partida</span>
+            <NavLine label="guardar partida" onClick={() => setSaveOpen(true)} />
+            <NavLine label="cargar partida" onClick={() => setLoadOpen(true)} />
+          </nav>
+
         </aside>
 
       </div>
@@ -357,6 +370,21 @@ export function WeeklyPlanning() {
 
         </div>
       </footer>
+
+      {saveOpen && (
+        <SaveSlotPicker
+          mode="save"
+          onClose={() => setSaveOpen(false)}
+          onSaved={() => { /* keep open so the player sees the confirmation chip */ }}
+        />
+      )}
+      {loadOpen && (
+        <SaveSlotPicker
+          mode="load"
+          onClose={() => setLoadOpen(false)}
+          onLoaded={() => navigate('/sesion', { replace: true })}
+        />
+      )}
     </div>
   )
 }
