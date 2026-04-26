@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShallow } from 'zustand/shallow'
 
 import { GameState, useGameStore } from '@/stores/gameStore'
 import { useProgramStore } from '@/features/program'
-import type { MusicInfo } from '@/features/program'
-import type { ProgramType } from '@/types/program'
+import type { MusicInfo, ValidationViolation } from '@/features/program'
+import type { ProgramData, ProgramType } from '@/types/program'
 import {
   ISUValidationBanner,
   MusicUploader,
@@ -13,6 +13,16 @@ import {
   ScoreCard,
 } from '@/components/ui'
 import type { ProgramElement } from '@/types/program'
+
+const PROGRAM_TYPES: readonly ProgramType[] = ['corto', 'libre']
+
+// stable empty arrays — Zustand selectors must return the SAME reference for
+// the same logical value or React's useSyncExternalStore loops trying to
+// detect tearing. Returning a fresh `[]` per call triggered the
+// "getSnapshot should be cached to avoid an infinite loop" warning AND, in
+// practice, cascading re-renders that knocked the player back to /.
+const EMPTY_VIOLATIONS: readonly ValidationViolation[] = []
+const EMPTY_PROGRAMS:   readonly ProgramData[] = []
 
 export function DisenadorPrograma() {
   const navigate = useNavigate()
@@ -25,41 +35,59 @@ export function DisenadorPrograma() {
     })),
   )
 
-  const draft = useProgramStore(s => s.currentDraft)
-  const violations = useProgramStore(s => s.violations)
-  const projected = useProgramStore(s => s.projectedScores)
-  const musicInfo = useProgramStore(s => s.musicInfo)
+  const activeType = useProgramStore(s => s.activeType)
+  const draft      = useProgramStore(s => s.drafts[s.activeType] ?? null)
+  const musicInfo  = useProgramStore(s => s.musicInfo[s.activeType] ?? null)
+  const violationsRaw = useProgramStore(s => s.violations[s.activeType])
+  const violations    = violationsRaw ?? EMPTY_VIOLATIONS
+  const projected     = useProgramStore(s => s.projectedScores[s.activeType] ?? null)
+  const confirmedRaw  = useProgramStore(s => (skater ? s.confirmedPrograms[skater.id] : undefined))
+  const confirmedForSkater = confirmedRaw ?? EMPTY_PROGRAMS
 
-  const startNewProgram = useProgramStore(s => s.startNewProgram)
+  const setActiveType   = useProgramStore(s => s.setActiveType)
+  const ensureDraft     = useProgramStore(s => s.ensureDraft)
   const updateElement   = useProgramStore(s => s.updateElement)
   const addElement      = useProgramStore(s => s.addElement)
   const removeElement   = useProgramStore(s => s.removeElement)
   const reorderElement  = useProgramStore(s => s.reorderElement)
-  const setMusicInfoStore = useProgramStore(s => s.setMusicInfo)
+  const setMusicInfo    = useProgramStore(s => s.setMusicInfo)
   const recomputeScores = useProgramStore(s => s.recomputeScores)
   const confirmProgram  = useProgramStore(s => s.confirmProgram)
-  const discardDraft    = useProgramStore(s => s.discardDraft)
+  const patchDraft      = useProgramStore(s => s.patchDraft)
 
-  const [activeType, setActiveType] = useState<ProgramType>('libre')
+  const [savedFlash, setSavedFlash] = useState<ProgramType | null>(null)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
 
+  // make sure both drafts exist as soon as the screen mounts so the player can
+  // freely switch tabs without ever losing in-progress work
   useEffect(() => {
     if (!skater || !season) return
-    if (draft && draft.tipo === activeType && draft.skaterId === skater.id) return
-
-    const fallbackInfo: MusicInfo = musicInfo ?? {
-      sourceId: '',
-      title:    `${skater.name} — programa ${activeType === 'corto' ? 'corto' : 'libre'}`,
-      duration: 0,
-      tempo:    null,
+    for (const tipo of PROGRAM_TYPES) {
+      const fallback: MusicInfo = {
+        sourceId: '',
+        title:    `${skater.name} — programa ${tipo}`,
+        duration: 0,
+        tempo:    null,
+      }
+      ensureDraft(tipo, skater.id, season.temporadaNumero, fallback)
     }
-    startNewProgram(activeType, skater.id, season.temporadaNumero, fallbackInfo)
-  }, [skater, season, activeType, draft, musicInfo, startNewProgram])
+  }, [skater, season, ensureDraft])
 
+  // recompute projected scores whenever the active draft changes — recomputeScores
+  // only writes into projectedScores so this can safely depend on `draft` itself
   useEffect(() => {
     if (!skater || !draft) return
     recomputeScores(skater)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skater?.id, draft?.elementos.length, draft?.coreografoNivel, draft?.densidadEmocional])
+  }, [skater, draft, recomputeScores])
+
+  // hook MUST run on every render (rules of hooks) — depends on the season number
+  // even when we render the loading fallback below
+  const confirmedTypes = useMemo(() => {
+    const out = new Set<ProgramType>()
+    const temporada = season?.temporadaNumero ?? -1
+    for (const p of confirmedForSkater) if (p.temporada === temporada) out.add(p.tipo)
+    return out
+  }, [confirmedForSkater, season?.temporadaNumero])
 
   if (!skater || !season || !draft) {
     return (
@@ -70,22 +98,29 @@ export function DisenadorPrograma() {
   }
 
   const valid = violations.length === 0
+  const bothConfirmed = confirmedTypes.has('corto') && confirmedTypes.has('libre')
 
   function handleConfirm() {
+    setConfirmError(null)
     if (!valid) return
-    try { confirmProgram() }
-    catch (err) { console.warn('[disenador] confirmProgram fallo:', err); return }
-    if (gameState === GameState.SEASON_END) {
-      useGameStore.getState().changeState(GameState.WEEKLY_PLANNING)
-      navigate('/semana', { replace: true })
-    } else {
-      useGameStore.getState().changeState(GameState.WEEKLY_PLANNING)
-      navigate('/semana', { replace: true })
+    try {
+      confirmProgram()
+      setSavedFlash(activeType)
+      window.setTimeout(() => setSavedFlash(null), 1800)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setConfirmError(message)
     }
   }
-  function handleDiscard() {
-    discardDraft()
-    navigate(-1)
+
+  function handleStartSeason() {
+    if (!bothConfirmed) return
+    if (gameState === GameState.SEASON_END) {
+      useGameStore.getState().changeState(GameState.WEEKLY_PLANNING)
+    } else {
+      useGameStore.getState().changeState(GameState.WEEKLY_PLANNING)
+    }
+    navigate('/semana', { replace: true })
   }
 
   return (
@@ -97,19 +132,26 @@ export function DisenadorPrograma() {
           <span className="glace-eyebrow">— diseñador de programa</span>
           <span className="glace-hairline flex-1" />
           <div className="inline-flex items-baseline gap-5 text-xs">
-            {(['corto', 'libre'] as const).map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setActiveType(t)}
-                className={[
-                  'font-display text-lg transition-colors uppercase tracking-[0.2em]',
-                  activeType === t ? 'text-ice-300' : 'text-content-secondary hover:text-ice-300',
-                ].join(' ')}
-              >
-                {t === 'corto' ? '— corto' : '— libre'}
-              </button>
-            ))}
+            {PROGRAM_TYPES.map(t => {
+              const isActive = activeType === t
+              const isConfirmed = confirmedTypes.has(t)
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setActiveType(t)}
+                  className={[
+                    'font-display text-lg transition-colors uppercase tracking-[0.2em] flex items-baseline gap-2',
+                    isActive ? 'text-ice-300' : 'text-content-secondary hover:text-ice-300',
+                  ].join(' ')}
+                >
+                  <span>— {t}</span>
+                  {isConfirmed && (
+                    <span className="text-[9px] tracking-[0.25em] text-frost-400">guardado</span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -131,7 +173,7 @@ export function DisenadorPrograma() {
           <div className="flex items-baseline gap-3 border-b border-border-subtle pb-2">
             <span className="glace-eyebrow">— música</span>
           </div>
-          <MusicUploader current={musicInfo} onPick={setMusicInfoStore} />
+          <MusicUploader current={musicInfo} onPick={setMusicInfo} />
         </section>
 
         {/* program meta */}
@@ -144,9 +186,7 @@ export function DisenadorPrograma() {
             <span className="glace-eyebrow">título programático</span>
             <input
               value={draft.tituloProgramatico}
-              onChange={e => useProgramStore.setState({
-                currentDraft: { ...draft, tituloProgramatico: e.target.value },
-              })}
+              onChange={e => patchDraft({ tituloProgramatico: e.target.value })}
               placeholder="cómo se llamará en el programa"
               className="border-b border-border bg-transparent pb-2 font-display italic text-2xl text-content-primary placeholder:text-content-disabled focus:border-ice-300 focus:outline-none transition-colors"
             />
@@ -156,9 +196,7 @@ export function DisenadorPrograma() {
             <span className="glace-eyebrow">género musical</span>
             <input
               value={draft.musicaGenero}
-              onChange={e => useProgramStore.setState({
-                currentDraft: { ...draft, musicaGenero: e.target.value },
-              })}
+              onChange={e => patchDraft({ musicaGenero: e.target.value })}
               placeholder="clásico · contemporáneo · jazz…"
               className="border-b border-border bg-transparent pb-2 font-display text-base text-content-primary placeholder:italic placeholder:text-content-disabled focus:border-ice-300 focus:outline-none transition-colors"
             />
@@ -168,18 +206,14 @@ export function DisenadorPrograma() {
             label="coreógrafo"
             min={1} max={5} step={1}
             value={draft.coreografoNivel}
-            onChange={v => useProgramStore.setState({
-              currentDraft: { ...draft, coreografoNivel: Math.max(1, Math.min(5, Math.round(v))) as 1|2|3|4|5 },
-            })}
+            onChange={v => patchDraft({ coreografoNivel: Math.max(1, Math.min(5, Math.round(v))) as 1|2|3|4|5 })}
             format={v => `nivel ${v}`}
           />
           <RangeRow
             label="densidad emocional"
             min={0} max={1} step={0.05}
             value={draft.densidadEmocional}
-            onChange={v => useProgramStore.setState({
-              currentDraft: { ...draft, densidadEmocional: Math.max(0, Math.min(1, v)) },
-            })}
+            onChange={v => patchDraft({ densidadEmocional: Math.max(0, Math.min(1, v)) })}
             format={v => v.toFixed(2)}
           />
         </section>
@@ -228,28 +262,56 @@ export function DisenadorPrograma() {
           <div className="col-span-3"><ScoreCard label="pcs proyectado"   value={projected?.pcs ?? 0}   accent="frost" narrative size="md" /></div>
           <div className="col-span-3"><ScoreCard label="total proyectado" value={projected?.total ?? 0} accent="gold"  narrative size="md" /></div>
           <div className="col-span-3 flex items-end justify-end gap-6">
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={!valid}
+                className={[
+                  'group flex items-baseline gap-3',
+                  valid
+                    ? 'text-content-primary hover:text-ice-200'
+                    : 'text-content-disabled cursor-not-allowed',
+                ].join(' ')}
+                title={valid
+                  ? `confirmar el programa ${activeType}`
+                  : 'corrige las violaciones ISU para confirmar'}
+              >
+                <span className="font-display text-2xl">
+                  confirmar {activeType}
+                </span>
+                <span className="text-xl">✓</span>
+              </button>
+              {savedFlash === activeType && (
+                <span className="glace-eyebrow text-frost-400">— guardado</span>
+              )}
+              {confirmError && (
+                <span className="glace-eyebrow text-danger max-w-xs text-right normal-case">
+                  {confirmError}
+                </span>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={handleDiscard}
-              className="font-display italic text-base text-content-muted hover:text-danger transition-colors"
-            >
-              descartar
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={!valid}
+              onClick={handleStartSeason}
+              disabled={!bothConfirmed}
               className={[
                 'group flex items-baseline gap-3',
-                valid
+                bothConfirmed
                   ? 'text-content-primary hover:text-ice-200'
                   : 'text-content-disabled cursor-not-allowed',
               ].join(' ')}
+              title={bothConfirmed
+                ? 'comenzar la primera semana'
+                : 'confirma corto y libre antes de comenzar'}
             >
-              <span className="font-display text-2xl">confirmar</span>
+              <span className="font-display text-2xl">
+                {gameState === GameState.SEASON_END ? 'siguiente temporada' : 'comenzar temporada'}
+              </span>
               <span className={[
                 'transition-transform',
-                valid ? 'group-hover:translate-x-2' : '',
+                bothConfirmed ? 'group-hover:translate-x-2' : '',
               ].join(' ')}>→</span>
             </button>
           </div>
@@ -258,6 +320,8 @@ export function DisenadorPrograma() {
     </div>
   )
 }
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 function RangeRow({
   label, min, max, step, value, onChange, format,

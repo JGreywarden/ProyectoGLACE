@@ -80,6 +80,15 @@ export function Competition() {
       )
       gs.applyWeekTransition({ season: { resultadosTemporada: list } })
     }
+    // end-of-season detection: if runWeek already wrote 30 entries into
+    // historialSemanas, do not bounce back to /semana — that would re-process
+    // week 30 forever. Go straight to SEASON_END.
+    const seasonRef = gs.currentSeason
+    if (seasonRef && seasonRef.historialSemanas.length >= 30) {
+      gs.changeState(GameState.SEASON_END)
+      navigate('/fin-temporada', { replace: true })
+      return
+    }
     gs.changeState(GameState.WEEKLY_PLANNING)
     navigate('/semana', { replace: true })
   }

@@ -81,8 +81,9 @@ beforeEach(() => {
     narrativeFlags: {}, emittedEvents: [], lastEmittedBySubtype: {},
   })
   useProgramStore.setState({
-    currentDraft: null, musicInfo: null, projectedScores: null,
-    violations: [], confirmedPrograms: {},
+    activeType: 'libre',
+    drafts: {}, musicInfo: {}, projectedScores: {},
+    violations: {}, confirmedPrograms: {},
   })
   useTrainingStore.setState({ schedules: {} })
 })
@@ -93,11 +94,11 @@ describe('pages — smoke', () => {
     expect(screen.getByText('GLACÉ')).toBeInTheDocument()
   })
 
-  it('CoachCreation renders inputs', () => {
+  it('CoachCreation renders the name step on first mount', () => {
     render(withRouter(<CoachCreation />))
-    // labels are split across multiple elements; the eyebrow text is reliable
-    expect(screen.getByText(/entrenador$/i, { selector: '.glace-eyebrow' })).toBeInTheDocument()
-    expect(screen.getByText(/patinadora fundacional/i)).toBeInTheDocument()
+    // initial step asks for pronoun + name; the gendered label matches either form
+    expect(screen.getByText(/entrenador(a)?/i, { selector: '.glace-eyebrow' })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/tu nombre/i)).toBeInTheDocument()
   })
 
   it('WeeklyPlanning renders with active game', () => {

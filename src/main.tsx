@@ -15,6 +15,23 @@ import '@/index.css'
 useSaveStore.getState().loadSlotMetadata()
 useGameStore.getState().changeState(GameState.MAIN_MENU)
 
+// dev-only: expose stores on window for repro / inspection. NEVER ship in prod.
+if (import.meta.env.DEV) {
+  void (async () => {
+    const { useTrainingStore } = await import('@/features/training')
+    const { useProgramStore }  = await import('@/features/program')
+    const { useNarrativeStore } = await import('@/features/narrative')
+    ;(window as unknown as { __GLACE__?: unknown }).__GLACE__ = {
+      gameStore:      useGameStore,
+      saveStore:      useSaveStore,
+      trainingStore:  useTrainingStore,
+      programStore:   useProgramStore,
+      narrativeStore: useNarrativeStore,
+      GameState,
+    }
+  })()
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <RouterProvider router={router} />
