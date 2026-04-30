@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { useGameStore, GameState } from './gameStore'
 import { useProgramStore } from '@/features/program'
+import { useRivalsStore } from '@/features/rivals'
+import { useNarrativeStore } from '@/features/narrative'
 import {
   save,
   load,
@@ -55,18 +57,20 @@ export const useSaveStore = create<SaveStoreState>()(
 
       saveGame: (slot) => {
         const gs = useGameStore.getState()
+        const ns = useNarrativeStore.getState()
         const snapshot: GameStateSnapshot = {
           currentSkater:   gs.currentSkater,
           currentCoach:    gs.currentCoach,
           currentClub:     gs.currentClub,
           currentSeason:   gs.currentSeason,
           isFirstSession:  gs.isFirstSession,
-          // future: pull from narrativeStore / eventStore when implemented
-          narrativeFlags:  {},
+          narrativeFlags:  ns.narrativeFlags,
           dialogueHistory: [],
-          emittedEvents:   [],
+          emittedEvents:   ns.emittedEvents,
           generatedEvents: [],
           confirmedPrograms: useProgramStore.getState().confirmedPrograms,
+          rivalsPool:        useRivalsStore.getState().pool,
+          decisionHistory:   ns.decisionHistory,
         }
         const result = save(slot, snapshot)
         if (result.ok) {
@@ -97,6 +101,12 @@ export const useSaveStore = create<SaveStoreState>()(
           sessionSummary: generateSessionSummary(file),
         })
         useProgramStore.getState().hydrateConfirmedPrograms(file.confirmedPrograms)
+        useRivalsStore.getState().hydratePool(file.rivalsPool)
+        useNarrativeStore.getState().hydrateFromSave({
+          narrativeFlags:  file.narrativeFlags,
+          emittedEvents:   file.emittedEvents,
+          decisionHistory: file.decisionHistory,
+        })
         return result
       },
 

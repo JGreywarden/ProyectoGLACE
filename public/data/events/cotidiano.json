@@ -174,7 +174,9 @@
         "Pico",
         "Rearme",
         "Cierre"
-      ]
+      ],
+      "contextoTemporal": "pre_competicion",
+      "semanasHastaProximaCompeticion": { "max": 2 }
     },
     "opciones": [
       {

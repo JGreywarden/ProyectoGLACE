@@ -218,7 +218,9 @@
       "faseTemporada": [
         "Pico",
         "Rearme"
-      ]
+      ],
+      "contextoTemporal": "pre_competicion",
+      "semanasHastaProximaCompeticion": { "max": 1 }
     },
     "opciones": [
       {

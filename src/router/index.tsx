@@ -15,6 +15,7 @@ import { GameEnd } from '@/pages/GameEnd'
 import { DisenadorPrograma } from '@/pages/DisenadorPrograma'
 import { FichaPatinador } from '@/pages/FichaPatinador'
 import { Calendario } from '@/pages/Calendario'
+import { CoachDiary } from '@/pages/CoachDiary'
 import { GameState } from '@/stores/gameStore'
 
 // ─── route map ────────────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
       // ── auxiliary debug routes — readable from any active state ──────────
       { path: 'ficha',      element: <FichaPatinador /> },
       { path: 'calendario', element: <Calendario /> },
+      { path: 'diario',     element: <CoachDiary /> },
 
       // ── active game (GameLayout silently blocks browser back navigation) ──
       {

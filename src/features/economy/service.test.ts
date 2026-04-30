@@ -1,15 +1,21 @@
 import { describe, it, expect } from 'vitest'
 import {
   computeWeeklyCashFlow,
+  computeWeeklyCashFlowBreakdown,
   computeFinancialPressureState,
   applyFinancialPressureSideEffects,
   reviewSponsors,
   applyPrizeMoney,
+  computePrizeAmount,
+  computeTravelCost,
+  computeCompetitionEconomy,
 } from './service'
 import {
   PRESION_VISIBLE_STRESS_WEEKLY,
   PRESION_CRISIS_STRESS_WEEKLY,
   ISU_PRIZE_MONEY,
+  TRAVEL_COST_BY_COMPETITION_TYPE,
+  WEEKLY_EXPENSE_BASE,
 } from '@/lib/balance'
 import { DEFAULT_CLUB_DATA } from '@/types/club'
 import type { ClubData, Sponsor } from '@/types/club'
@@ -240,10 +246,17 @@ describe('applyPrizeMoney', () => {
     expect(updated.presupuestoReservas).toBe(18_000)
   })
 
-  it('does not add money when posicion is beyond the podium', () => {
+  it('grand prix now pays positions 4–6 per ISU 2024 schedule', () => {
     const club = makeClub({ presupuestoReservas: 10_000 })
     const result = makeResult(4)
     const updated = applyPrizeMoney(club, result, 'grandprix')
+    expect(updated.presupuestoReservas).toBe(13_000)  // 10000 + GP[4]=3000
+  })
+
+  it('does not pay when posicion is beyond the table (e.g. 7th in nationals)', () => {
+    const club = makeClub({ presupuestoReservas: 10_000 })
+    const result = makeResult(7)
+    const updated = applyPrizeMoney(club, result, 'nacional')
     expect(updated.presupuestoReservas).toBe(10_000)
   })
 
@@ -252,5 +265,85 @@ describe('applyPrizeMoney', () => {
     const result = makeResult(1)
     applyPrizeMoney(club, result, 'grandprix')
     expect(club.presupuestoReservas).toBe(10_000)
+  })
+})
+
+// ─── Fase D — desglose económico ────────────────────────────────────────────
+
+describe('computeWeeklyCashFlowBreakdown', () => {
+  it('totals match computeWeeklyCashFlow', () => {
+    const sponsor: Sponsor = {
+      id: 'sp', nombre: 'Test', ingresoSemanal: 200,
+      metricasExigidas: {},
+    }
+    const club = makeClub({ sponsors: [sponsor] })
+    const breakdown = computeWeeklyCashFlowBreakdown(club, makeSeason(), [])
+    const flat     = computeWeeklyCashFlow(club, makeSeason(), [])
+    expect(breakdown.total).toBeCloseTo(flat, 5)
+  })
+
+  it('produces one income line per active sponsor', () => {
+    const a: Sponsor = { id: 'a', nombre: 'Acme',  ingresoSemanal: 300, metricasExigidas: {} }
+    const b: Sponsor = { id: 'b', nombre: 'Beta',  ingresoSemanal: 150, metricasExigidas: {} }
+    const club = makeClub({ sponsors: [a, b] })
+    const out = computeWeeklyCashFlowBreakdown(club, makeSeason(), [])
+    expect(out.ingresos.filter(l => l.label.startsWith('sponsor')).length).toBe(2)
+    expect(out.ingresos.find(l => l.label.includes('Acme'))?.amount).toBe(300)
+    expect(out.ingresos.find(l => l.label.includes('Beta'))?.amount).toBe(150)
+  })
+
+  it('always includes an operations base expense', () => {
+    const out = computeWeeklyCashFlowBreakdown(makeClub(), makeSeason(), [])
+    expect(out.gastos.some(l => l.label.includes('operativos'))).toBe(true)
+    expect(out.gastos.find(l => l.label.includes('operativos'))?.amount).toBe(WEEKLY_EXPENSE_BASE)
+  })
+})
+
+describe('computePrizeAmount', () => {
+  it('returns 0 for unranked players', () => {
+    const r = makeResult(0)
+    expect(computePrizeAmount(r)).toBe(0)
+  })
+
+  it('reads the prize for podium positions in nationals', () => {
+    const r = makeResult(2, { tipo: 'nacional' })
+    expect(computePrizeAmount(r)).toBe(ISU_PRIZE_MONEY.NATIONAL[2])
+  })
+
+  it('reads the prize for 4th in GP per the extended ISU table', () => {
+    const r = makeResult(4, { tipo: 'grandprix' })
+    expect(computePrizeAmount(r)).toBe(ISU_PRIZE_MONEY.GP[4])
+  })
+
+  it('returns 0 for positions beyond the table (8th in nationals)', () => {
+    const r = makeResult(8, { tipo: 'nacional' })
+    expect(computePrizeAmount(r)).toBe(0)
+  })
+})
+
+describe('computeTravelCost', () => {
+  it('returns the configured cost for each competition type', () => {
+    expect(computeTravelCost('nacional')).toBe(TRAVEL_COST_BY_COMPETITION_TYPE.nacional)
+    expect(computeTravelCost('mundial')).toBe(TRAVEL_COST_BY_COMPETITION_TYPE.mundial)
+    expect(computeTravelCost('olimpico')).toBe(TRAVEL_COST_BY_COMPETITION_TYPE.olimpico)
+  })
+})
+
+describe('computeCompetitionEconomy', () => {
+  it('combines premio − gastoViaje into neto', () => {
+    const r = makeResult(1, { tipo: 'mundial' })
+    const eco = computeCompetitionEconomy(r)
+    expect(eco.premio).toBe(ISU_PRIZE_MONEY.WORLDS[1])
+    expect(eco.gastoViaje).toBe(TRAVEL_COST_BY_COMPETITION_TYPE.mundial)
+    expect(eco.bonoExtra).toBe(0)
+    expect(eco.neto).toBe(eco.premio + eco.bonoExtra - eco.gastoViaje)
+  })
+
+  it('a non-podium result still nets a negative number from the travel cost', () => {
+    const r = makeResult(15, { tipo: 'mundial' })
+    const eco = computeCompetitionEconomy(r)
+    expect(eco.premio).toBe(0)
+    expect(eco.neto).toBeLessThan(0)
+    expect(eco.neto).toBe(-TRAVEL_COST_BY_COMPETITION_TYPE.mundial)
   })
 })

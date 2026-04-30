@@ -1,16 +1,19 @@
 // modal overlay that pauses the rink animation while a competition Moment plays.
 // the rink stays visible behind a darkening veil so the player feels the pause,
-// not a context switch. anti-softlock: a 30-second timer auto-picks the lowest-impact option.
+// not a context switch. a visible countdown bar warns the player that an
+// auto-pick will fire if no choice is made in time.
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { NarrativeEvent, NarrativeOption } from '@/features/narrative'
 
 interface Props {
   event:         NarrativeEvent
   onChoose:      (optionId: string) => void
-  /** seconds before auto-pick fires; default 30 (anti-softlock) */
+  /** seconds before auto-pick fires; default 7 (anti-softlock) */
   autoPickAfterSeconds?: number
 }
+
+const DEFAULT_TIMEOUT_SECONDS = 7
 
 // ranks options by mechanical magnitude — lowest = most neutral
 function neutralOption(opciones: readonly NarrativeOption[]): NarrativeOption {
@@ -20,19 +23,51 @@ function neutralOption(opciones: readonly NarrativeOption[]): NarrativeOption {
          + Math.abs(e.goeDeltaRemaining ?? 0) * 30
          + Math.abs((e.varianzaMultiplier ?? 1) - 1) * 5
          + Math.abs(e.bondDelta ?? 0) * 0.1
+         + (e.causesFall ? 100 : 0)
   }
   return [...opciones].sort((a, b) => score(a) - score(b))[0]
 }
 
-export function MomentOverlay({ event, onChoose, autoPickAfterSeconds = 30 }: Props) {
-  const fallback = useMemo(() => neutralOption(event.opciones), [event])
+export function MomentOverlay({ event, onChoose, autoPickAfterSeconds }: Props) {
+  const fallback = useMemo(() => {
+    if (event.defaultOptionId) {
+      return event.opciones.find(o => o.id === event.defaultOptionId) ?? neutralOption(event.opciones)
+    }
+    return neutralOption(event.opciones)
+  }, [event])
 
+  const totalSeconds = autoPickAfterSeconds ?? event.momentTimeoutSeconds ?? DEFAULT_TIMEOUT_SECONDS
+  const startedAt = useRef<number>(performance.now())
+  const [remaining, setRemaining] = useState<number>(totalSeconds)
+  const decided = useRef<boolean>(false)
+
+  // animate the remaining time at ~60fps via rAF — keeps the bar smooth without
+  // flooding React state updates (one per frame is fine for a brief overlay)
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      onChoose(fallback.id)
-    }, autoPickAfterSeconds * 1000)
-    return () => window.clearTimeout(id)
-  }, [fallback, autoPickAfterSeconds, onChoose])
+    let raf = 0
+    const tick = () => {
+      const elapsed = (performance.now() - startedAt.current) / 1000
+      const left = Math.max(0, totalSeconds - elapsed)
+      setRemaining(left)
+      if (left <= 0 && !decided.current) {
+        decided.current = true
+        onChoose(fallback.id)
+        return
+      }
+      raf = window.requestAnimationFrame(tick)
+    }
+    raf = window.requestAnimationFrame(tick)
+    return () => window.cancelAnimationFrame(raf)
+  }, [totalSeconds, fallback, onChoose])
+
+  function handleChoose(optionId: string) {
+    if (decided.current) return
+    decided.current = true
+    onChoose(optionId)
+  }
+
+  const pct = Math.max(0, Math.min(1, remaining / totalSeconds))
+  const isLowTime = remaining < 2.5
 
   return (
     <div
@@ -42,7 +77,7 @@ export function MomentOverlay({ event, onChoose, autoPickAfterSeconds = 30 }: Pr
       className="absolute inset-0 z-30 flex items-center justify-center px-12 glace-grain"
       style={{ backgroundColor: 'rgba(12, 18, 32, 0.92)' }}
     >
-      <div className="relative flex w-full max-w-3xl flex-col gap-10 px-12 py-14">
+      <div className="relative flex w-full max-w-3xl flex-col gap-8 px-12 py-12">
         {/* hairline frame — left and right verticals */}
         <span className="glace-hairline-v absolute left-0 top-8 bottom-8" aria-hidden />
         <span className="glace-hairline-v absolute right-0 top-8 bottom-8" aria-hidden />
@@ -53,6 +88,35 @@ export function MomentOverlay({ event, onChoose, autoPickAfterSeconds = 30 }: Pr
             {event.titulo}
           </h2>
         </header>
+
+        {/* countdown bar — visible top-of-mind so the player knows time is ticking */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline justify-between font-display text-xs uppercase tracking-widest">
+            <span className={isLowTime ? 'text-danger' : 'text-content-disabled'}>
+              decide
+            </span>
+            <span className={[
+              'tabular-nums',
+              isLowTime ? 'text-danger' : 'text-content-secondary',
+            ].join(' ')}>
+              {remaining.toFixed(1)}s
+            </span>
+          </div>
+          <div className="relative h-[2px] w-full bg-border-subtle overflow-hidden">
+            <div
+              className={[
+                'absolute inset-y-0 left-0 transition-colors',
+                isLowTime ? 'bg-danger' : 'bg-ice-400',
+              ].join(' ')}
+              style={{
+                width: `${pct * 100}%`,
+                // disable transition on width so the rAF loop drives motion smoothly
+                transitionProperty: 'background-color',
+              }}
+              aria-hidden
+            />
+          </div>
+        </div>
 
         <div className="glace-hairline mx-auto w-32" />
 
@@ -65,7 +129,7 @@ export function MomentOverlay({ event, onChoose, autoPickAfterSeconds = 30 }: Pr
             <li key={opt.id}>
               <button
                 type="button"
-                onClick={() => onChoose(opt.id)}
+                onClick={() => handleChoose(opt.id)}
                 className={[
                   'group flex w-full items-baseline gap-6 bg-bg-deep/80 px-6 py-5 text-left',
                   'glace-lift hover:bg-bg-base',

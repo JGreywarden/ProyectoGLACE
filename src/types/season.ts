@@ -39,6 +39,8 @@ export interface CompetitionSlot {
 
 // ─── competition results ──────────────────────────────────────────────────────
 
+import type { ProgramElement, ProgramType } from './program'
+
 /** detailed ISU PCS breakdown */
 export interface PCSBreakdown {
   /** Skating Skills */
@@ -53,7 +55,78 @@ export interface PCSBreakdown {
   in: number
 }
 
-/** outcome of a single competition appearance */
+/**
+ * outcome of a single program element after simulation.
+ * exposed to the UI so it can reveal element-by-element rather than the score
+ * appearing all at once.
+ */
+export interface ElementOutcome {
+  element:        ProgramElement
+  goe:            number
+  caida:          boolean
+  /** true when an element is so badly executed that it does not score TES (only deductions) */
+  invalid:        boolean
+  /** dificultadBase × (1 + goe × factor); 0 when invalid */
+  tesBruto:       number
+  /** ISU deduction this element produced (1.0 per fall, more for serious infractions) */
+  deduccion:      number
+}
+
+/** complete score of one program (SP or FS) — emitted after all elements are revealed */
+export interface ProgramScore {
+  programType: ProgramType
+  elements:    ElementOutcome[]
+  tes:         number
+  pcs:         number
+  pcsDetalle:  PCSBreakdown
+  caidas:      number
+  deducciones: number
+  total:       number
+}
+
+/** a Moment's effect on the run, surfaced in the judges screen for the player */
+export interface MomentImpact {
+  programType:     ProgramType
+  momentoId:       string
+  optionId:        string
+  /** human-readable summary like "Tu apoyo en el segundo combo aportó +1.2" */
+  descripcion:     string
+  deltaTes:        number
+  causesFall:      boolean
+}
+
+/** an entry in the final classification table */
+export interface RankingEntry {
+  posicion:        number
+  participantId:   string
+  nombre:          string
+  nacionalidad:    string
+  totalCombinado:  number
+  /** SP subtotal — null when the format has no short program (rare) */
+  scoreCorto:      number | null
+  /** FS subtotal — always present in current format */
+  scoreLibre:      number
+  esJugador:       boolean
+}
+
+/** economic outcome of attending one competition */
+export interface CompetitionEconomy {
+  /** ISU prize money for the player's posición (0 when off-podium / unranked) */
+  premio:      number
+  /** travel cost: hotel + flights + per diem, scaled by prestige */
+  gastoViaje:  number
+  /** sponsor or federation bonus tied to this specific result; 0 when none */
+  bonoExtra:   number
+  /** premio + bonoExtra − gastoViaje */
+  neto:        number
+}
+
+/**
+ * outcome of a single competition appearance.
+ * top-level numeric fields aggregate SP + FP so existing prize-money and
+ * presentation logic keeps working unchanged. detailed per-program breakdowns
+ * live in programaCorto / programaLibre and feed the rich Competition UI.
+ */
 export interface CompetitionResult {
   /** stable unique id; canonical format `${skaterId}-s${temporada}w${semana}` */
   id:                string
@@ -61,20 +134,30 @@ export interface CompetitionResult {
   semana:            number
   nombreCompeticion: string
   tipo:              CompetitionType
-  /** Technical Element Score */
+  /** combined Technical Element Score (SP + FP) */
   tes:    number
-  /** Program Component Score (sum of PCS breakdown × factor) */
+  /** combined Program Component Score (SP + FP) */
   pcs:    number
-  /** breakdown of the five PCS judges' panels */
+  /** breakdown averaged across SP + FP, weighted by program factor */
   pcsDetalle: PCSBreakdown
-  /** final total score (tes + pcs − deductions) */
+  /** final combined score (tes + pcs − deductions) */
   total:  number
-  /** final ranking position in the competition */
+  /** final ranking position in the competition (1 = winner) */
   posicion: number
-  /** number of falls in the program */
+  /** combined number of falls across SP + FP */
   caidas: number
-  /** total deductions applied */
+  /** combined total deductions */
   deducciones: number
+  /** SP per-program detail; null on legacy results that pre-date SP simulation */
+  programaCorto?:  ProgramScore | null
+  /** FS per-program detail; null on legacy results that pre-date the split */
+  programaLibre?:  ProgramScore | null
+  /** full standings (player + rivals); empty on legacy results */
+  clasificacion?:  RankingEntry[]
+  /** moments triggered during the competition and their numeric impact */
+  momentImpacts?:  MomentImpact[]
+  /** prize money + travel cost + bonus; null on legacy results that pre-date Fase D */
+  economiaDetalle?: CompetitionEconomy | null
 }
 
 // ─── weekly summary ───────────────────────────────────────────────────────────

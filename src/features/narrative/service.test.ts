@@ -7,13 +7,18 @@ import type { SkaterData } from '@/types'
 import {
   applyEventEffect,
   applyMomentEffect,
+  buildDecisionRecord,
   evaluateConditions,
   loadEvents,
   selectCompetitionMoment,
   selectWeeklyEvent,
+  semanasDesdeUltimaCompeticion,
+  semanasHastaProximaCompeticion,
   validateNarrativeEvent,
 } from './service'
-import type { NarrativeContext, NarrativeEvent } from './types'
+import { validateDecisionHistory } from './validation'
+import type { CompetitionSlot } from '@/types/season'
+import type { DecisionRecord, NarrativeContext, NarrativeEvent } from './types'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
 
@@ -470,5 +475,254 @@ describe('loadEvents integration', () => {
   it('throws when every file fails to load', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })))
     await expect(loadEvents()).rejects.toThrow()
+  })
+})
+
+// ─── temporal context helpers ────────────────────────────────────────────────
+
+const slot = (semana: number, clasificado = true): CompetitionSlot => ({
+  semana, clasificado, nombreCompeticion: `Comp ${semana}`, tipo: 'nacional',
+})
+
+describe('semanasHastaProximaCompeticion', () => {
+  it('returns the smallest non-negative delta to a future competition', () => {
+    expect(semanasHastaProximaCompeticion([slot(10), slot(15), slot(20)], 12)).toBe(3)
+  })
+
+  it('returns 0 when a competition falls on the current week', () => {
+    expect(semanasHastaProximaCompeticion([slot(10)], 10)).toBe(0)
+  })
+
+  it('returns null when no competition is ahead', () => {
+    expect(semanasHastaProximaCompeticion([slot(5)], 12)).toBeNull()
+  })
+
+  it('ignores unscheduled competitions (clasificado=false)', () => {
+    expect(semanasHastaProximaCompeticion([slot(15, false), slot(20)], 10)).toBe(10)
+  })
+})
+
+describe('semanasDesdeUltimaCompeticion', () => {
+  it('returns the smallest non-negative delta to a past competition', () => {
+    expect(semanasDesdeUltimaCompeticion([slot(5), slot(10)], 12)).toBe(2)
+  })
+
+  it('returns null when no competition has happened yet', () => {
+    expect(semanasDesdeUltimaCompeticion([slot(20)], 5)).toBeNull()
+  })
+})
+
+describe('evaluateConditions — contexto temporal', () => {
+  it('blocks pre_competicion events outside the 3-week window', () => {
+    const ev = makeEvent({ condiciones: { contextoTemporal: 'pre_competicion' } })
+    // next comp at week 15, current 5 → distance 10 → not pre
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 5, calendario: [slot(15)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('allows pre_competicion events when the next comp is within the window', () => {
+    const ev = makeEvent({ condiciones: { contextoTemporal: 'pre_competicion' } })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 13, calendario: [slot(15)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('reproduces the user-reported bug: post-competition WEEK does NOT trigger pre_competicion event', () => {
+    // GP semana 10 + Mundial semana 28. After Mundial we're in week 29 with
+    // no upcoming competition → the "lesión antes del Mundial" event MUST not fire.
+    const ev = makeEvent({
+      condiciones: {
+        contextoTemporal: 'pre_competicion',
+        semanasHastaProximaCompeticion: { max: 3 },
+      },
+    })
+    const ctx = makeContext({
+      season: {
+        ...DEFAULT_SEASON_DATA,
+        semanaActual: 29,
+        calendario: [slot(10), slot(28)],
+      },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('post_competicion event fires the week after a competition', () => {
+    const ev = makeEvent({ condiciones: { contextoTemporal: 'post_competicion' } })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 11, calendario: [slot(10)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('sin_competicion_proxima blocks events near competitions', () => {
+    const ev = makeEvent({ condiciones: { contextoTemporal: 'sin_competicion_proxima' } })
+    // current week 13, next comp at 15 → pre window → blocked
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 13, calendario: [slot(15)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('sin_competicion_proxima passes far from any competition', () => {
+    const ev = makeEvent({ condiciones: { contextoTemporal: 'sin_competicion_proxima' } })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 5, calendario: [slot(20)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+})
+
+describe('evaluateConditions — lesiones', () => {
+  it('requiereLesion blocks healthy skaters', () => {
+    const ev = makeEvent({ condiciones: { requiereLesion: true } })
+    const ctx = makeContext()
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('requiereLesion passes when an injury is active', () => {
+    const ev = makeEvent({ condiciones: { requiereLesion: true } })
+    const ctx = makeContext({
+      skater: makeSkater({
+        currentInjury: {
+          injuredAtWeek: 5, recoveryWeeksTotal: 3, recoveryWeeksRemaining: 2, severity: 'moderada',
+        },
+      }),
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('bloqueaSiLesion excludes injured skaters', () => {
+    const ev = makeEvent({ condiciones: { bloqueaSiLesion: true } })
+    const ctx = makeContext({
+      skater: makeSkater({
+        currentInjury: {
+          injuredAtWeek: 5, recoveryWeeksTotal: 3, recoveryWeeksRemaining: 2, severity: 'leve',
+        },
+      }),
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('severidadLesion narrows by severity', () => {
+    const ev = makeEvent({ condiciones: { requiereLesion: true, severidadLesion: ['grave'] } })
+    const moderate = makeContext({
+      skater: makeSkater({
+        currentInjury: {
+          injuredAtWeek: 5, recoveryWeeksTotal: 4, recoveryWeeksRemaining: 2, severity: 'moderada',
+        },
+      }),
+    })
+    const grave = makeContext({
+      skater: makeSkater({
+        currentInjury: {
+          injuredAtWeek: 5, recoveryWeeksTotal: 12, recoveryWeeksRemaining: 8, severity: 'grave',
+        },
+      }),
+    })
+    expect(evaluateConditions(ev, moderate)).toBe(false)
+    expect(evaluateConditions(ev, grave)).toBe(true)
+  })
+})
+
+describe('evaluateConditions — cadenas narrativas por decisión', () => {
+  const past: DecisionRecord = {
+    id: '1w8-crisis_perfeccionismo_01', season: 1, week: 8,
+    eventId: 'crisis_perfeccionismo_01', eventTitulo: 'El límite del perfeccionismo',
+    eventTipo: 'crisis',
+    optionId: 'parar_ahora', optionTexto: 'Para. Hoy no más.',
+    consecuenciasResumidas: '+8 vínculo', flagsAlterados: [], skaterId: 'sk',
+  }
+
+  it('decisionRequerida passes when the matching decision is in history', () => {
+    const ev = makeEvent({
+      condiciones: {
+        decisionRequerida: {
+          eventId: 'crisis_perfeccionismo_01',
+          optionId: 'parar_ahora',
+        },
+      },
+    })
+    const ctx = makeContext({ decisionHistory: [past] })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('decisionRequerida fails when the option chosen was different', () => {
+    const ev = makeEvent({
+      condiciones: {
+        decisionRequerida: {
+          eventId: 'crisis_perfeccionismo_01',
+          optionId: 'ignorar_exigir',
+        },
+      },
+    })
+    const ctx = makeContext({ decisionHistory: [past] })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('decisionBloqueante excludes events when the player made that choice', () => {
+    const ev = makeEvent({
+      condiciones: {
+        decisionBloqueante: {
+          eventId: 'crisis_perfeccionismo_01',
+          optionId: 'parar_ahora',
+        },
+      },
+    })
+    const ctx = makeContext({ decisionHistory: [past] })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+})
+
+// ─── buildDecisionRecord ─────────────────────────────────────────────────────
+
+describe('buildDecisionRecord', () => {
+  it('captures option id, season/week and consequence summary', () => {
+    const ev = makeEvent({
+      id: 'e1', titulo: 'Un día',
+      opciones: [{
+        id: 'op-a', texto: 'asumo',
+        efectos: { vinculoDelta: 5, estresDelta: -3, narrativeFlags: { fa: true, fb: 'x' } },
+      }],
+    })
+    const rec = buildDecisionRecord(ev, 'op-a', { week: 12, season: 2, skaterId: 'sk1' })
+    expect(rec.id).toBe('2w12-e1')
+    expect(rec.eventTitulo).toBe('Un día')
+    expect(rec.optionId).toBe('op-a')
+    expect(rec.optionTexto).toBe('asumo')
+    expect(rec.consecuenciasResumidas).toContain('+5 vínculo')
+    expect(rec.consecuenciasResumidas).toContain('-3 estrés')
+    expect(rec.flagsAlterados).toEqual(['fa', 'fb'])
+    expect(rec.skaterId).toBe('sk1')
+  })
+})
+
+// ─── validateDecisionHistory ─────────────────────────────────────────────────
+
+describe('validateDecisionHistory', () => {
+  const valid: DecisionRecord = {
+    id: '1w5-evX', season: 1, week: 5,
+    eventId: 'evX', eventTitulo: 'X', eventTipo: 'cotidiano',
+    optionId: 'a', optionTexto: 'texto',
+    consecuenciasResumidas: '', flagsAlterados: [], skaterId: 'sk',
+  }
+
+  it('accepts an array of valid records', () => {
+    expect(validateDecisionHistory([valid])).toBe(true)
+  })
+
+  it('accepts an empty array', () => {
+    expect(validateDecisionHistory([])).toBe(true)
+  })
+
+  it('rejects when any entry is malformed', () => {
+    const bad = { ...valid, week: 99 }  // out of [1, 30]
+    expect(validateDecisionHistory([valid, bad])).toBe(false)
+  })
+
+  it('rejects non-arrays', () => {
+    expect(validateDecisionHistory({})).toBe(false)
   })
 })

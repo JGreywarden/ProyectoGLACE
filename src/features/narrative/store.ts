@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 
 import type {
+  DecisionRecord,
   EventOutcome,
   MomentOutcome,
   MomentoTrigger,
@@ -12,6 +13,7 @@ import type {
 import {
   applyEventEffect,
   applyMomentEffect,
+  buildDecisionRecord,
   loadEvents,
   selectCompetitionMoment,
   selectWeeklyEvent,
@@ -25,6 +27,8 @@ interface NarrativeState {
   narrativeFlags:       Record<string, boolean | number | string>
   emittedEvents:        string[]
   lastEmittedBySubtype: Partial<Record<NarrativeEventType, number>>
+  /** chronological log of every player decision (events + Moments) */
+  decisionHistory:      DecisionRecord[]
 
   loadPool:      () => Promise<void>
   triggerEvent:  (ctx: NarrativeContext, rng?: () => number) => NarrativeEvent | null
@@ -34,6 +38,12 @@ interface NarrativeState {
   triggerMoment: (trigger: MomentoTrigger, ctx: NarrativeContext, rng?: () => number) => NarrativeEvent | null
   resolveChoice: (optionId: string, rng?: () => number) => EventOutcome | MomentOutcome | null
   resetEvent:    () => void
+  /** rehydrate decisionHistory + flags from a loaded SaveFile */
+  hydrateFromSave: (snapshot: {
+    narrativeFlags:  Record<string, boolean | number | string>
+    emittedEvents:   string[]
+    decisionHistory: DecisionRecord[]
+  }) => void
 }
 
 export const useNarrativeStore = create<NarrativeState>()(
@@ -45,6 +55,7 @@ export const useNarrativeStore = create<NarrativeState>()(
       narrativeFlags:       {},
       emittedEvents:        [],
       lastEmittedBySubtype: {},
+      decisionHistory:      [],
 
       loadPool: async () => {
         if (get().availableEvents.length > 0) return
@@ -104,8 +115,19 @@ export const useNarrativeStore = create<NarrativeState>()(
       },
 
       resolveChoice: (optionId, rng = Math.random) => {
-        const { currentEvent, lastContext } = get()
+        const { currentEvent, lastContext, decisionHistory } = get()
         if (!currentEvent) return null
+
+        // build the decision record before applying effects so the entry is
+        // identical regardless of mutation outcome (failed mutations are not
+        // a "different choice" — the player picked this option either way)
+        const decision = lastContext
+          ? buildDecisionRecord(currentEvent, optionId, {
+              week:      lastContext.season.semanaActual,
+              season:    lastContext.season.temporadaNumero,
+              skaterId:  lastContext.skater.id,
+            })
+          : null
 
         if (currentEvent.tipo === 'momento_competicion') {
           const outcome = applyMomentEffect(currentEvent, optionId)
@@ -114,6 +136,9 @@ export const useNarrativeStore = create<NarrativeState>()(
               narrativeFlags: { ...get().narrativeFlags, ...outcome.flagsPatch },
               currentEvent:   null,
               lastContext:    null,
+              decisionHistory: decision
+                ? [...decisionHistory, decision]
+                : decisionHistory,
             },
             false,
             'narrative/resolveMoment',
@@ -128,6 +153,9 @@ export const useNarrativeStore = create<NarrativeState>()(
             narrativeFlags: { ...get().narrativeFlags, ...outcome.flagsPatch },
             currentEvent:   null,
             lastContext:    null,
+            decisionHistory: decision
+              ? [...decisionHistory, decision]
+              : decisionHistory,
           },
           false,
           'narrative/resolveEvent',
@@ -137,6 +165,18 @@ export const useNarrativeStore = create<NarrativeState>()(
 
       resetEvent: () => {
         set({ currentEvent: null, lastContext: null }, false, 'narrative/resetEvent')
+      },
+
+      hydrateFromSave: (snapshot) => {
+        set(
+          {
+            narrativeFlags:  snapshot.narrativeFlags,
+            emittedEvents:   snapshot.emittedEvents,
+            decisionHistory: snapshot.decisionHistory,
+          },
+          false,
+          'narrative/hydrateFromSave',
+        )
       },
     }),
     { name: 'glace/narrative' },

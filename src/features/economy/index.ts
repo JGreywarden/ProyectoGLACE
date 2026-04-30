@@ -2,10 +2,19 @@
 
 export {
   computeWeeklyCashFlow,
+  computeWeeklyCashFlowBreakdown,
   computeFinancialPressureState,
   applyFinancialPressureSideEffects,
   reviewSponsors,
   applyPrizeMoney,
+  computePrizeAmount,
+  computeTravelCost,
+  computeCompetitionEconomy,
 } from './service'
 
-export type { FinancialPressureState, SponsorReview } from './service'
+export type {
+  CashFlowBreakdown,
+  CashFlowLine,
+  FinancialPressureState,
+  SponsorReview,
+} from './service'

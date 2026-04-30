@@ -10,13 +10,20 @@ import {
   FIRST_FALL_GOE_PENALTY,
   GOE_RANGE,
   GOE_WEIGHTS,
+  INVALIDATION_THRESHOLD,
   MENTAL_VARIANCE_SIGMA,
   PCS_COMPONENT_COEFFICIENTS,
   PCS_PROGRAM_FACTOR,
 } from '@/lib/balance'
 import type { SkaterData } from '@/types/skater'
 import type { ProgramData, ProgramElement } from '@/types/program'
-import type { CompetitionResult, PCSBreakdown } from '@/types/season'
+import type {
+  CompetitionResult,
+  ElementOutcome,
+  MomentImpact,
+  PCSBreakdown,
+  ProgramScore,
+} from '@/types/season'
 import type { Judge } from '@/services/dataService'
 import type { MomentOutcome } from '@/features/narrative'
 
@@ -68,6 +75,20 @@ export function trimmedMean(values: readonly number[]): number {
   let total = 0
   for (const x of trimmed) total += x
   return total / trimmed.length
+}
+
+function elementFactor(el: ProgramElement): number {
+  return ELEMENT_GOE_TES_FACTOR[el.tipo] ?? 0.1
+}
+
+/** true when this element counts as a fall (only jumps below the threshold) */
+function isFall(el: ProgramElement, goe: number): boolean {
+  return el.tipo === 'salto' && goe <= FALL_GOE_THRESHOLD
+}
+
+/** true when this fall is so severe that the element does not score TES */
+function isInvalidated(el: ProgramElement, goe: number): boolean {
+  return el.tipo === 'salto' && goe <= INVALIDATION_THRESHOLD
 }
 
 // ─── GOE ──────────────────────────────────────────────────────────────────────
@@ -127,8 +148,7 @@ export function computeGOE(
 
 /** TES contribution of a single element: base * (1 + goe * factor). */
 export function computeTESElement(element: ProgramElement, goe: number): number {
-  const factor = ELEMENT_GOE_TES_FACTOR[element.tipo] ?? 0.1
-  return element.dificultadBase * (1 + goe * factor)
+  return element.dificultadBase * (1 + goe * elementFactor(element))
 }
 
 /** aggregate TES over the full program, with fall bookkeeping. */
@@ -146,30 +166,48 @@ export function computeTES(
   contextFlags: CompetitionContextFlags,
   rng: RNG = Math.random,
 ): TESResult {
-  // work on a local copy so callers can reuse their flags object
-  const localFlags: CompetitionContextFlags = { ...contextFlags }
-  const goes: number[] = []
+  const elements = simulateProgramElements(program, skater, contextFlags, rng)
   let tes = 0
   let caidas = 0
+  let deducciones = 0
+  const goes: number[] = []
+  for (const e of elements) {
+    tes += e.tesBruto
+    if (e.caida) caidas += 1
+    deducciones += e.deduccion
+    goes.push(e.goe)
+  }
+  return { tes, caidas, deducciones, goes }
+}
+
+// ─── element-by-element simulation ───────────────────────────────────────────
+
+/**
+ * runs the program element-by-element and exposes each ElementOutcome so the UI
+ * can reveal them progressively. Each ElementOutcome holds the raw GOE plus
+ * the derived flags (caida, invalid) and bookkeeping (tesBruto, deduccion).
+ *
+ * Pure: the contextFlags argument is cloned; callers may reuse their object.
+ */
+export function simulateProgramElements(
+  program: ProgramData,
+  skater: SkaterData,
+  contextFlags: CompetitionContextFlags = {},
+  rng: RNG = Math.random,
+): ElementOutcome[] {
+  const localFlags: CompetitionContextFlags = { ...contextFlags }
+  const out: ElementOutcome[] = []
 
   for (const element of program.elementos) {
     const goe = computeGOE(skater, element, localFlags, rng)
-    goes.push(goe)
-    tes += computeTESElement(element, goe)
-
-    // a jump with goe at or below the fall threshold registers as a caída
-    if (element.tipo === 'salto' && goe <= FALL_GOE_THRESHOLD) {
-      caidas += 1
-      localFlags.firstFallTriggered = true
-    }
+    const caida = isFall(element, goe)
+    const invalid = isInvalidated(element, goe)
+    const tesBruto = invalid ? 0 : computeTESElement(element, goe)
+    const deduccion = caida ? FALL_DEDUCTION : 0
+    out.push({ element, goe, caida, invalid, tesBruto, deduccion })
+    if (caida) localFlags.firstFallTriggered = true
   }
-
-  return {
-    tes,
-    caidas,
-    deducciones: caidas * FALL_DEDUCTION,
-    goes,
-  }
+  return out
 }
 
 // ─── PCS ──────────────────────────────────────────────────────────────────────
@@ -257,7 +295,125 @@ export function computePCS(
   return { detalle, total: weightedSum * factor }
 }
 
-// ─── simulate ─────────────────────────────────────────────────────────────────
+// ─── finalization ────────────────────────────────────────────────────────────
+
+/**
+ * combines the (possibly Moment-mutated) elements with PCS to produce the full
+ * ProgramScore. PCS depends only on judges + skater + program, so it can be
+ * computed once at the end of revelation; TES is simply the sum of element
+ * contributions, which is what makes the player's choices in Moments visible.
+ */
+export function finalizeProgramScore(
+  elements: readonly ElementOutcome[],
+  skater: SkaterData,
+  program: ProgramData,
+  judges: readonly Judge[],
+): ProgramScore {
+  let tes = 0
+  let caidas = 0
+  let deducciones = 0
+  for (const e of elements) {
+    tes += e.tesBruto
+    if (e.caida) caidas += 1
+    deducciones += e.deduccion
+  }
+  const pcs = computePCS(skater, program, judges)
+  return {
+    programType: program.tipo,
+    elements: [...elements],
+    tes,
+    pcs:        pcs.total,
+    pcsDetalle: pcs.detalle,
+    caidas,
+    deducciones,
+    total: tes + pcs.total - deducciones,
+  }
+}
+
+// ─── moment patching ──────────────────────────────────────────────────────────
+
+/**
+ * applies a Moment outcome to the elements that have not been revealed yet.
+ * the element at fromIndex receives goeBonusCurrent; later elements receive
+ * goeBonusRemaining. when causesFall is true, the element at fromIndex is
+ * forced to a fall (clamps GOE to FALL_GOE_THRESHOLD) and the standard
+ * "first fall" penalty propagates to subsequent elements unless one already
+ * fell earlier in the program.
+ *
+ * Pure: returns a new array; never mutates the input.
+ */
+export function applyMomentToElements(
+  elements: readonly ElementOutcome[],
+  outcome: MomentOutcome,
+  fromIndex: number,
+  causesFall: boolean,
+): ElementOutcome[] {
+  if (elements.length === 0) return [...elements]
+  const idx = Math.max(0, Math.min(fromIndex, elements.length - 1))
+  const earlierFall = elements.slice(0, idx).some(e => e.caida)
+  const next: ElementOutcome[] = elements.map(e => ({ ...e, element: e.element }))
+
+  for (let i = idx; i < next.length; i++) {
+    const cur = next[i]
+    let goe = cur.goe
+    if (i === idx) {
+      if (causesFall) {
+        goe = Math.min(goe, FALL_GOE_THRESHOLD)
+      } else {
+        goe += outcome.goeBonusCurrent
+      }
+    } else {
+      goe += outcome.goeBonusRemaining
+    }
+    // propagate first-fall penalty when this Moment causes the program's first fall
+    if (causesFall && i > idx && !earlierFall) {
+      goe *= FIRST_FALL_GOE_PENALTY
+    }
+    goe = clamp(goe, GOE_RANGE.min, GOE_RANGE.max)
+    const caida = isFall(cur.element, goe)
+    const invalid = isInvalidated(cur.element, goe)
+    next[i] = {
+      element:   cur.element,
+      goe,
+      caida,
+      invalid,
+      tesBruto:  invalid ? 0 : computeTESElement(cur.element, goe),
+      deduccion: caida ? FALL_DEDUCTION : 0,
+    }
+  }
+  return next
+}
+
+/**
+ * builds the human-readable MomentImpact entry for a Moment that just resolved.
+ * deltaTes is the TES difference between before and after applying the moment.
+ */
+export function summarizeMomentImpact(
+  before: readonly ElementOutcome[],
+  after: readonly ElementOutcome[],
+  programType: ProgramScore['programType'],
+  momentoId: string,
+  optionId: string,
+  causesFall: boolean,
+): MomentImpact {
+  const beforeTes = before.reduce((s, e) => s + e.tesBruto, 0)
+  const afterTes = after.reduce((s, e) => s + e.tesBruto, 0)
+  const deltaTes = afterTes - beforeTes
+  const sign = deltaTes >= 0 ? '+' : ''
+  const desc = causesFall
+    ? `caída forzada por el Momento (${sign}${deltaTes.toFixed(1)} TES)`
+    : `tu elección modificó la ejecución (${sign}${deltaTes.toFixed(1)} TES)`
+  return {
+    programType,
+    momentoId,
+    optionId,
+    descripcion: desc,
+    deltaTes,
+    causesFall,
+  }
+}
+
+// ─── legacy SimulationResult and aggregate simulate ──────────────────────────
 
 export interface SimulationResult {
   tes:         number
@@ -268,18 +424,37 @@ export interface SimulationResult {
   deducciones: number
 }
 
-// ─── moment patching ──────────────────────────────────────────────────────────
+/**
+ * legacy single-program simulation kept so the worker and existing tests keep
+ * working unchanged. New competition code should call simulateProgramElements
+ * + finalizeProgramScore so the UI can reveal element-by-element.
+ */
+export function simulate(
+  skater: SkaterData,
+  program: ProgramData,
+  judges: readonly Judge[],
+  contextFlags: CompetitionContextFlags = {},
+  rng: RNG = Math.random,
+): SimulationResult {
+  const elements = simulateProgramElements(program, skater, contextFlags, rng)
+  const score = finalizeProgramScore(elements, skater, program, judges)
+  return {
+    tes:         score.tes,
+    pcs:         score.pcs,
+    pcsDetalle:  score.pcsDetalle,
+    total:       score.total,
+    caidas:      score.caidas,
+    deducciones: score.deducciones,
+  }
+}
+
+// ─── legacy applyMomentToResult kept for the existing engine.test.ts ─────────
 
 /**
- * Applies a Moment outcome to an already-computed CompetitionResult by re-scoring
- * TES on the affected elements. The marginal effect of a +δ on an element's GOE
- * is `dificultadBase × factor × δ`; we sum that across:
- *   - element at fromElementIndex: gets goeBonusCurrent
- *   - elements after fromElementIndex: each gets goeBonusRemaining
- *
- * Pure: returns a new CompetitionResult; never mutates the input. PCS is not
- * affected by Moments in Fase 1. varianzaMultiplier is a UI hint only here.
- * bondDelta and flagsPatch are applied by the caller (page) at gameStore level.
+ * legacy helper: re-scores TES on an already-totalled CompetitionResult by
+ * applying the marginal effect of a Moment. The newer pipeline mutates the
+ * ElementOutcome[] directly via applyMomentToElements; keep this so existing
+ * call-sites compile while we migrate the UI.
  */
 export function applyMomentToResult(
   result: CompetitionResult,
@@ -293,7 +468,7 @@ export function applyMomentToResult(
   let tesDelta = 0
   for (let i = 0; i < programElements.length; i++) {
     const el = programElements[i]
-    const factor = ELEMENT_GOE_TES_FACTOR[el.tipo] ?? 0.1
+    const factor = elementFactor(el)
     if (i === idx) {
       tesDelta += el.dificultadBase * factor * outcome.goeBonusCurrent
     } else if (i > idx) {
@@ -304,25 +479,4 @@ export function applyMomentToResult(
   const tes = result.tes + tesDelta
   const total = tes + result.pcs - result.deducciones
   return { ...result, tes, total }
-}
-
-/** full competition simulation: TES + PCS − deducciones. posición se calcula fuera. */
-export function simulate(
-  skater: SkaterData,
-  program: ProgramData,
-  judges: readonly Judge[],
-  contextFlags: CompetitionContextFlags = {},
-  rng: RNG = Math.random,
-): SimulationResult {
-  const tesResult = computeTES(program, skater, contextFlags, rng)
-  const pcsResult = computePCS(skater, program, judges)
-  const total = tesResult.tes + pcsResult.total - tesResult.deducciones
-  return {
-    tes:         tesResult.tes,
-    pcs:         pcsResult.total,
-    pcsDetalle:  pcsResult.detalle,
-    total,
-    caidas:      tesResult.caidas,
-    deducciones: tesResult.deducciones,
-  }
 }
