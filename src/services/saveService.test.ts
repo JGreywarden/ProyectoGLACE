@@ -18,6 +18,8 @@ function snapshot(extra: Partial<GameStateSnapshot> = {}): GameStateSnapshot {
     emittedEvents:   [],
     generatedEvents: [],
     confirmedPrograms: {},
+    rivalsPool:        null,
+    decisionHistory:   [],
     ...extra,
   }
 }

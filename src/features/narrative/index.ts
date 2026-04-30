@@ -10,6 +10,10 @@ export type {
   EventOutcome,
   MomentOutcome,
   MomentoTrigger,
+  ContextoTemporal,
+  WeekRange,
+  DecisionRef,
+  DecisionRecord,
 } from './types'
 
 export { useNarrativeStore } from './store'
@@ -22,4 +26,9 @@ export {
   applyEventEffect,
   applyMomentEffect,
   validateNarrativeEvent,
+  buildDecisionRecord,
+  semanasHastaProximaCompeticion,
+  semanasDesdeUltimaCompeticion,
 } from './service'
+
+export { validateDecisionHistory } from './validation'

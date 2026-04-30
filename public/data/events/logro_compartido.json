@@ -216,7 +216,9 @@
         "Pico",
         "Rearme",
         "Cierre"
-      ]
+      ],
+      "contextoTemporal": "post_competicion",
+      "semanasDesdeUltimaCompeticion": { "max": 1 }
     },
     "opciones": [
       {

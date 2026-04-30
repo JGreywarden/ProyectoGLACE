@@ -5,6 +5,7 @@ import { GameState, useGameStore } from '@/stores/gameStore'
 import { useTrainingStore } from '@/features/training'
 import { useNarrativeStore } from '@/features/narrative'
 import { useProgramStore } from '@/features/program'
+import { useRivalsStore } from '@/features/rivals'
 import { getAllTraits, getJudgePanel } from '@/services/dataService'
 import { runWeekWithPool } from '@/services/weekService'
 import type { WeekContext } from '@/services/weekService'
@@ -31,15 +32,24 @@ export function WeekProcessing() {
       return
     }
 
-    const { availableEvents, narrativeFlags, emittedEvents } =
+    const { availableEvents, narrativeFlags, emittedEvents, decisionHistory } =
       useNarrativeStore.getState()
-    const program = useProgramStore
+    const programLibre = useProgramStore
       .getState()
       .getProgram(currentSkater.id, 'libre', currentSeason.temporadaNumero)
+    const programCorto = useProgramStore
+      .getState()
+      .getProgram(currentSkater.id, 'corto', currentSeason.temporadaNumero)
 
     const competitionSlot = currentSeason.calendario.find(
       c => c.semana === currentSeason.semanaActual && c.clasificado,
     )
+
+    // ensure a rival pool exists for the current season; regenerated only on
+    // first invocation per season so the field stays consistent across events
+    const rivalsPool = useRivalsStore
+      .getState()
+      .ensurePool(currentSeason.temporadaNumero)
 
     ;(async () => {
       try {
@@ -61,10 +71,14 @@ export function WeekProcessing() {
             season: currentSeason,
             narrativeFlags,
             emittedEvents,
+            decisionHistory,
           },
           allTraits,
           allJudges,
-          program,
+          program:      programLibre,
+          programCorto,
+          programLibre,
+          rivalsPool,
         }
 
         const result = await runWeekWithPool(ctx, availableEvents)
@@ -74,6 +88,7 @@ export function WeekProcessing() {
           club:   result.club,
           season: result.season,
         })
+        useGameStore.getState().setLastEconomy(result.economyBreakdown, result.pressureState)
 
         if (result.competitionResult) {
           useGameStore.getState().changeState(GameState.COMPETITION)
@@ -88,6 +103,7 @@ export function WeekProcessing() {
             season: result.season,
             narrativeFlags,
             emittedEvents,
+            decisionHistory,
           })
           useGameStore.getState().changeState(GameState.NARRATIVE_EVENT)
           navigate('/evento', { replace: true })

@@ -158,6 +158,19 @@ export const FALL_DEDUCTION = 1.0
 // los elementos siguientes pierden un 12 % de GOE (factor 0.88)
 export const FIRST_FALL_GOE_PENALTY = 0.88
 
+// GDD cap. 5 — un elemento con caída y GOE crítico se considera invalidado:
+// no aporta TES (solo cuenta la deducción). emula la regla ISU de "no value"
+// cuando un salto se ejecuta tan mal que el panel técnico lo descarta.
+export const INVALIDATION_THRESHOLD = -4
+
+// fatiga adicional que el patinador acumula entre programa corto y libre
+// dentro del mismo evento (descanso intermedio limitado)
+export const FATIGUE_BETWEEN_PROGRAMS = 6
+
+// estrés añadido al patinador si cayó al menos una vez en el programa corto
+// y aún tiene que afrontar el libre
+export const STRESS_AFTER_FALL_INTERPROGRAM = 4
+
 
 // ─── 5. Motor PCS — Program Component Score ───────────────────────────────────
 
@@ -282,3 +295,73 @@ export const PRESION_VISIBLE_STRESS_WEEKLY = 3
 
 // GDD cap. 7 — estrés semanal adicional en crisis financiera (más severo que visible)
 export const PRESION_CRISIS_STRESS_WEEKLY = 5
+
+// GDD cap. 7 — coste fijo de viaje cuando la temporada incluye una competición.
+// modela hotel + vuelos + per diem del staff acompañante. escala con prestigio
+// del evento: nacional son ~1500€, mundiales ~10000€.
+export const TRAVEL_COST_BY_COMPETITION_TYPE = {
+  nacional:       1_500,
+  internacional:  3_500,
+  grandprix:      5_500,
+  finalGrandprix: 8_000,
+  europeo:        7_000,
+  mundial:        9_500,
+  olimpico:      12_000,
+} as const
+
+// ─── 8. Lesiones (Fase B) ─────────────────────────────────────────────────────
+
+// GDD cap. 3 — la carga semanal por sí sola raramente supera el 8 % en una semana
+// equilibrada. INJURY_LOAD_DIVISOR convierte esa carga a una probabilidad 0–1
+// que `rollInjury` compara contra el rng de la semana. valor calibrado para que
+// una semana de dos técnicos sin descanso (carga ≈ 8) ronde el 5–7 % de riesgo
+// con un patinador sin historial; se amplifica si historialLesiones > 70 según
+// `computeInjuryRisk`.
+export const INJURY_LOAD_DIVISOR = 130
+
+// GDD cap. 3 — pesos para elegir severidad de la lesión cuando el roll dispara
+// una. los pesos suman aproximadamente 1.0; cuerpo-frágil y historialLesiones>70
+// recargan la cola hacia 'moderada' y 'grave' (ver injury.ts).
+export const INJURY_SEVERITY_WEIGHTS = {
+  leve:     0.60,
+  moderada: 0.30,
+  grave:    0.10,
+} as const
+
+// GDD cap. 3 — duración base de recuperación por severidad (semanas).
+// el sistema rueda dentro del rango con el rng del momento de la lesión.
+export const SEVERITY_RECOVERY_WEEKS = {
+  leve:     { min: 1, max: 2  },
+  moderada: { min: 3, max: 6  },
+  grave:    { min: 8, max: 14 },
+} as const
+
+// GDD cap. 3 — incremento permanente de historialLesiones tras recuperarse
+export const HISTORIAL_INCREASE_BY_SEVERITY = {
+  leve:     5,
+  moderada: 12,
+  grave:    22,
+} as const
+
+// GDD cap. 3 — pérdida potencial de techo biológico tras una lesión grave
+// solo se aplica a 'grave'; rango inclusivo (puntos enteros)
+export const TECHO_LOSS_RANGE_GRAVE = { min: 1, max: 3 } as const
+
+// GDD cap. 3 — probabilidad base de lesión post-competición por caída
+// se modula por fatigaAcumulada y historialLesiones. una caída con fatiga 50
+// y historial 20 ronda el 6 %; con dos caídas y fatiga > 70 sube al 25 %+.
+export const FALL_INJURY_BASE_PROB = 0.04
+
+// GDD cap. 3 — modificadores de probabilidad de lesión por rasgo
+export const TRAIT_INJURY_MULTIPLIERS: Readonly<Record<string, number>> = {
+  'resiliente':           0.5,
+  'cuerpo-de-atleta':     0.7,
+  'cuerpo-fragil':        1.4,
+  'buscador-de-limites':  1.2,
+  'desconectado-del-cuerpo': 1.15,
+  'memoria-corporal':     0.85,  // recovers faster but small risk reduction baseline
+} as const
+
+// GDD cap. 3 — niveles de fisioterapia reducen la severidad escalada (probabilidad de
+// "ascenso" de severidad) y aceleran la recuperación. multiplicador < 1 = bonus.
+export const FISIO_RECOVERY_BONUS_PER_LEVEL = 0.05  // 5 % menos semanas por nivel

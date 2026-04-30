@@ -4,6 +4,7 @@
 import { rollMutation } from '@/features/athlete'
 import type { SkaterData, TraitId } from '@/types'
 import { getFasePorSemana } from '@/types/season'
+import type { CompetitionSlot } from '@/types/season'
 import { TRAITS_BY_ID } from '@/types/skater'
 import {
   isFiniteNumber,
@@ -13,6 +14,9 @@ import {
 } from '@/utils/validation'
 
 import type {
+  ContextoTemporal,
+  DecisionRecord,
+  DecisionRef,
   EventOutcome,
   MomentOutcome,
   MomentoTrigger,
@@ -22,6 +26,7 @@ import type {
   NarrativeEventType,
   NarrativeOption,
   NarrativeOptionEffect,
+  WeekRange,
 } from './types'
 
 // ─── file registry ───────────────────────────────────────────────────────────
@@ -67,6 +72,28 @@ const VALID_TRIGGERS: ReadonlySet<string> = new Set<MomentoTrigger>(['early', 'm
 
 // ─── validators ──────────────────────────────────────────────────────────────
 
+const VALID_CONTEXTOS: ReadonlySet<string> = new Set<ContextoTemporal>([
+  'pre_competicion',
+  'post_competicion',
+  'sin_competicion_proxima',
+])
+
+const VALID_INJURY_SEVERITIES: ReadonlySet<string> = new Set(['leve', 'moderada', 'grave'])
+
+function isWeekRange(v: unknown): v is WeekRange {
+  if (!isPlainObject(v)) return false
+  if (v['min'] !== undefined && (!isInteger(v['min']) || (v['min'] as number) < 0)) return false
+  if (v['max'] !== undefined && (!isInteger(v['max']) || (v['max'] as number) < 0)) return false
+  return true
+}
+
+function isDecisionRef(v: unknown): v is DecisionRef {
+  if (!isPlainObject(v)) return false
+  if (typeof v['eventId']  !== 'string' || v['eventId'].length  === 0) return false
+  if (typeof v['optionId'] !== 'string' || v['optionId'].length === 0) return false
+  return true
+}
+
 function validateConditions(v: unknown): v is NarrativeCondition {
   if (!isPlainObject(v)) return false
 
@@ -91,6 +118,20 @@ function validateConditions(v: unknown): v is NarrativeCondition {
   if (temp !== undefined) {
     if (!isInteger(temp) || temp < 1) return false
   }
+  // contexto temporal
+  if (v['contextoTemporal'] !== undefined && !VALID_CONTEXTOS.has(String(v['contextoTemporal']))) return false
+  if (v['semanasHastaProximaCompeticion'] !== undefined && !isWeekRange(v['semanasHastaProximaCompeticion'])) return false
+  if (v['semanasDesdeUltimaCompeticion']  !== undefined && !isWeekRange(v['semanasDesdeUltimaCompeticion']))  return false
+  // lesiones
+  if (v['requiereLesion']  !== undefined && typeof v['requiereLesion']  !== 'boolean') return false
+  if (v['bloqueaSiLesion'] !== undefined && typeof v['bloqueaSiLesion'] !== 'boolean') return false
+  if (v['severidadLesion'] !== undefined) {
+    if (!Array.isArray(v['severidadLesion'])) return false
+    if (!v['severidadLesion'].every(s => VALID_INJURY_SEVERITIES.has(String(s)))) return false
+  }
+  // memoria narrativa
+  if (v['decisionRequerida']  !== undefined && !isDecisionRef(v['decisionRequerida']))  return false
+  if (v['decisionBloqueante'] !== undefined && !isDecisionRef(v['decisionBloqueante'])) return false
   return true
 }
 
@@ -127,6 +168,7 @@ function validateOptionEffect(v: unknown): v is NarrativeOptionEffect {
   if (v['goeDeltaRemaining']  !== undefined && !isInRange(v['goeDeltaRemaining'],  -0.3, 0.3)) return false
   if (v['varianzaMultiplier'] !== undefined && !isInRange(v['varianzaMultiplier'],  0.5, 2.0)) return false
   if (v['bondDelta']          !== undefined && !isInRange(v['bondDelta'],         -100, 100))  return false
+  if (v['causesFall']         !== undefined && typeof v['causesFall'] !== 'boolean')           return false
 
   return true
 }
@@ -157,6 +199,9 @@ export function validateNarrativeEvent(data: unknown): data is NarrativeEvent {
   } else if (data['trigger'] !== undefined && !VALID_TRIGGERS.has(String(data['trigger']))) {
     return false
   }
+
+  if (data['defaultOptionId'] !== undefined && typeof data['defaultOptionId'] !== 'string') return false
+  if (data['momentTimeoutSeconds'] !== undefined && !isInRange(data['momentTimeoutSeconds'], 1, 60)) return false
 
   if (data['source'] !== undefined && data['source'] !== 'static' && data['source'] !== 'generated') return false
   if (data['generatedAt'] !== undefined && typeof data['generatedAt'] !== 'string') return false
@@ -210,6 +255,74 @@ export async function loadEvents(): Promise<NarrativeEvent[]> {
   return events
 }
 
+// ─── temporal context helpers ───────────────────────────────────────────────
+
+/** distance in weeks from the current week to the next scheduled, attended
+ *  competition. returns null when nothing remains in the calendar. */
+export function semanasHastaProximaCompeticion(
+  calendario: readonly CompetitionSlot[],
+  semanaActual: number,
+): number | null {
+  let best: number | null = null
+  for (const c of calendario) {
+    if (!c.clasificado) continue
+    if (c.semana < semanaActual) continue
+    const delta = c.semana - semanaActual
+    if (best === null || delta < best) best = delta
+  }
+  return best
+}
+
+/** distance in weeks from the most recent past attended competition to the
+ *  current week. returns null when no competition has happened yet. */
+export function semanasDesdeUltimaCompeticion(
+  calendario: readonly CompetitionSlot[],
+  semanaActual: number,
+): number | null {
+  let best: number | null = null
+  for (const c of calendario) {
+    if (!c.clasificado) continue
+    if (c.semana > semanaActual) continue
+    const delta = semanaActual - c.semana
+    if (best === null || delta < best) best = delta
+  }
+  return best
+}
+
+const PRE_COMP_WINDOW = 3
+const POST_COMP_WINDOW = 3
+
+function inRange(value: number, range: WeekRange): boolean {
+  if (range.min !== undefined && value < range.min) return false
+  if (range.max !== undefined && value > range.max) return false
+  return true
+}
+
+function matchesContextoTemporal(
+  expected: ContextoTemporal,
+  hasta: number | null,
+  desde: number | null,
+): boolean {
+  if (expected === 'pre_competicion') {
+    return hasta !== null && hasta <= PRE_COMP_WINDOW
+  }
+  if (expected === 'post_competicion') {
+    return desde !== null && desde <= POST_COMP_WINDOW
+  }
+  // sin_competicion_proxima
+  const pre  = hasta !== null && hasta <= PRE_COMP_WINDOW
+  const post = desde !== null && desde <= POST_COMP_WINDOW
+  return !pre && !post
+}
+
+function decisionInHistory(
+  history: readonly DecisionRecord[] | undefined,
+  ref: DecisionRef,
+): boolean {
+  if (!history) return false
+  return history.some(d => d.eventId === ref.eventId && d.optionId === ref.optionId)
+}
+
 // ─── condition evaluation ───────────────────────────────────────────────────
 
 /** returns true when every field of event.condiciones is satisfied by context */
@@ -218,7 +331,7 @@ export function evaluateConditions(
   context: NarrativeContext,
 ): boolean {
   const c = event.condiciones
-  const { vinculo, estres } = context.skater.weeklyState
+  const { vinculo, estres, currentInjury } = context.skater.weeklyState
 
   if (c.minVinculo !== undefined && vinculo < c.minVinculo) return false
   if (c.maxVinculo !== undefined && vinculo > c.maxVinculo) return false
@@ -242,6 +355,31 @@ export function evaluateConditions(
       if (context.narrativeFlags[f]) return false
     }
   }
+
+  // temporal context — measured against the season calendar
+  const hasta = semanasHastaProximaCompeticion(context.season.calendario, context.season.semanaActual)
+  const desde = semanasDesdeUltimaCompeticion(context.season.calendario, context.season.semanaActual)
+  if (c.contextoTemporal && !matchesContextoTemporal(c.contextoTemporal, hasta, desde)) return false
+  if (c.semanasHastaProximaCompeticion) {
+    if (hasta === null) return false
+    if (!inRange(hasta, c.semanasHastaProximaCompeticion)) return false
+  }
+  if (c.semanasDesdeUltimaCompeticion) {
+    if (desde === null) return false
+    if (!inRange(desde, c.semanasDesdeUltimaCompeticion)) return false
+  }
+
+  // injuries
+  if (c.requiereLesion === true && !currentInjury) return false
+  if (c.bloqueaSiLesion === true && currentInjury) return false
+  if (c.severidadLesion && c.severidadLesion.length > 0) {
+    if (!currentInjury) return false
+    if (!c.severidadLesion.includes(currentInjury.severity)) return false
+  }
+
+  // narrative chains by past decisions
+  if (c.decisionRequerida && !decisionInHistory(context.decisionHistory, c.decisionRequerida)) return false
+  if (c.decisionBloqueante && decisionInHistory(context.decisionHistory, c.decisionBloqueante))   return false
 
   return true
 }
@@ -439,6 +577,66 @@ export function applyEventEffect(
     : { skaterPatch, flagsPatch }
 }
 
+// ─── decision history helpers ────────────────────────────────────────────────
+
+/**
+ * builds a stable, human-readable record of one player choice. used both for
+ * the Diario del entrenador UI and to gate cadenas narrativas via
+ * decisionRequerida / decisionBloqueante.
+ */
+export function buildDecisionRecord(
+  event: NarrativeEvent,
+  optionId: string,
+  context: { week: number; season: number; skaterId: string },
+): DecisionRecord {
+  const opt = findOption(event, optionId)
+  const optionTexto = opt?.texto ?? optionId
+  const flagsAlterados = opt?.efectos.narrativeFlags
+    ? Object.keys(opt.efectos.narrativeFlags)
+    : []
+  return {
+    id:                `${context.season}w${context.week}-${event.id}`,
+    season:            context.season,
+    week:              context.week,
+    eventId:           event.id,
+    eventTitulo:       event.titulo,
+    eventTipo:         event.tipo,
+    optionId,
+    optionTexto,
+    consecuenciasResumidas: summarizeConsequences(opt?.efectos),
+    flagsAlterados,
+    skaterId:          context.skaterId,
+  }
+}
+
+function summarizeConsequences(e: NarrativeOptionEffect | undefined): string {
+  if (!e) return ''
+  const parts: string[] = []
+  const push = (label: string, n?: number) => {
+    if (n === undefined || n === 0) return
+    const sign = n > 0 ? '+' : ''
+    parts.push(`${sign}${n} ${label}`)
+  }
+  push('vínculo', e.vinculoDelta)
+  push('estrés',  e.estresDelta)
+  push('fatiga',  e.fatigueDelta)
+  push('vínculo', e.bondDelta)  // momentos
+  if (e.atributosDelta) {
+    for (const [k, v] of Object.entries(e.atributosDelta)) push(k, v)
+  }
+  if (e.goeDeltaCurrent && e.goeDeltaCurrent !== 0) {
+    parts.push(`${e.goeDeltaCurrent > 0 ? '+' : ''}${e.goeDeltaCurrent.toFixed(1)} GOE actual`)
+  }
+  if (e.goeDeltaRemaining && e.goeDeltaRemaining !== 0) {
+    parts.push(`${e.goeDeltaRemaining > 0 ? '+' : ''}${e.goeDeltaRemaining.toFixed(1)} GOE restante`)
+  }
+  if (e.causesFall) parts.push('caída forzada')
+  if (e.rasgoRiesgo && e.probabilidadMutacion && e.probabilidadMutacion > 0) {
+    parts.push(`riesgo de mutación de ${e.rasgoRiesgo}`)
+  }
+  return parts.join(', ')
+}
+
 /**
  * extracts the mechanical knobs of a competition-Moment option. Pure and
  * synchronous — competition engine applies the returned deltas directly.
@@ -456,6 +654,7 @@ export function applyMomentEffect(
       goeBonusRemaining: 0,
       varianzaMultiplier: 1.0,
       bondDelta: 0,
+      causesFall: false,
       flagsPatch,
     }
   }
@@ -468,6 +667,7 @@ export function applyMomentEffect(
     goeBonusRemaining:  e.goeDeltaRemaining  ?? 0,
     varianzaMultiplier: e.varianzaMultiplier ?? 1.0,
     bondDelta:          e.bondDelta          ?? 0,
+    causesFall:         e.causesFall ?? false,
     flagsPatch,
   }
 }

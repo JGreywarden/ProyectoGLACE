@@ -5,6 +5,7 @@ import type { CoachData } from '@/types/coach'
 import type { ClubData } from '@/types/club'
 import type { SeasonData } from '@/types/season'
 import type { SessionSummary } from '@/services/saveService'
+import type { CashFlowBreakdown, FinancialPressureState } from '@/features/economy'
 
 export enum GameState {
   BOOT               = 'BOOT',
@@ -45,6 +46,10 @@ interface GameStoreState {
   isFirstSession:  boolean
   stateHistory:    GameState[]
   sessionSummary:  SessionSummary | null
+  /** detailed cash-flow breakdown of the most recently processed week */
+  lastEconomyBreakdown: CashFlowBreakdown | null
+  /** financial pressure bucket after the most recently processed week */
+  lastPressureState:    FinancialPressureState | null
   changeState:        (newState: GameState) => void
   setCurrentSkater:   (skater: SkaterData | null) => void
   setCurrentCoach:    (coach: CoachData | null) => void
@@ -52,6 +57,7 @@ interface GameStoreState {
   setCurrentSeason:   (season: SeasonData | null) => void
   setIsFirstSession:  (value: boolean) => void
   setSessionSummary:  (summary: SessionSummary | null) => void
+  setLastEconomy:     (breakdown: CashFlowBreakdown | null, pressure: FinancialPressureState | null) => void
   /** atomic cross-entity update: merges all patches in a single set() so no
    *  intermediate render can observe inconsistent state between skater/coach/club/season */
   applyWeekTransition: (patch: WeekTransitionPatch) => void
@@ -77,6 +83,8 @@ export const useGameStore = create<GameStoreState>()(
       isFirstSession: true,
       stateHistory:   [GameState.BOOT],
       sessionSummary: null,
+      lastEconomyBreakdown: null,
+      lastPressureState:    null,
 
       changeState: (newState) => {
         const { currentState, stateHistory } = get()
@@ -104,6 +112,11 @@ export const useGameStore = create<GameStoreState>()(
       setCurrentSeason:  (season)  => set({ currentSeason: season },   false, 'game/setCurrentSeason'),
       setIsFirstSession: (value)   => set({ isFirstSession: value },   false, 'game/setIsFirstSession'),
       setSessionSummary: (summary) => set({ sessionSummary: summary }, false, 'game/setSessionSummary'),
+      setLastEconomy:    (breakdown, pressure) => set(
+        { lastEconomyBreakdown: breakdown, lastPressureState: pressure },
+        false,
+        'game/setLastEconomy',
+      ),
 
       applyWeekTransition: (patch) => {
         const { currentSkater, currentCoach, currentClub, currentSeason } = get()

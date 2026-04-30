@@ -168,6 +168,9 @@ export interface PhysicalPermanentAttributes {
 
 // ─── weekly state ─────────────────────────────────────────────────────────────
 
+/** severity bracket of an injury — drives recovery time and post-recovery cost */
+export type InjurySeverity = 'leve' | 'moderada' | 'grave'
+
 /** tracks a single injury from onset to full recovery */
 export interface InjuryRecord {
   /** week number in which the injury occurred */
@@ -176,6 +179,8 @@ export interface InjuryRecord {
   recoveryWeeksTotal:     number
   /** weeks remaining until the skater returns to full training */
   recoveryWeeksRemaining: number
+  /** severity bracket; drives historialLesiones increment and techo loss on recovery */
+  severity:               InjurySeverity
 }
 
 /** mutable state that evolves each game week */
@@ -949,6 +954,11 @@ export function validateSkaterData(data: unknown): data is SkaterData {
     if (!isNonNegative(injury['injuredAtWeek'])) return false
     if (!isNonNegative(injury['recoveryWeeksTotal'])) return false
     if (!isNonNegative(injury['recoveryWeeksRemaining'])) return false
+    // accept legacy saves without severity (Fase 0/1) — they default to 'leve'
+    if (injury['severity'] !== undefined) {
+      const sev = injury['severity']
+      if (sev !== 'leve' && sev !== 'moderada' && sev !== 'grave') return false
+    }
   }
 
   const retiredAt = data['retiredAt']

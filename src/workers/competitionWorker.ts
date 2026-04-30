@@ -3,9 +3,16 @@
 // all heavy lifting lives in '@/features/competition/engine'; this file
 // only translates messages and builds a deterministic rng from seed.
 
-import { simulate, type CompetitionContextFlags, type SimulationResult } from '@/features/competition/engine'
+import {
+  finalizeProgramScore,
+  simulate,
+  simulateProgramElements,
+  type CompetitionContextFlags,
+  type SimulationResult,
+} from '@/features/competition/engine'
 import type { SkaterData } from '@/types/skater'
 import type { ProgramData } from '@/types/program'
+import type { ElementOutcome, ProgramScore } from '@/types/season'
 import type { Judge } from '@/services/dataService'
 
 export interface SimulateRequest {
@@ -16,9 +23,20 @@ export interface SimulateRequest {
   contextFlags: CompetitionContextFlags
 }
 
+export interface SimulateProgramRequest {
+  type:         'simulate-program'
+  skater:       SkaterData
+  program:      ProgramData
+  judges:       Judge[]
+  contextFlags: CompetitionContextFlags
+}
+
+export type WorkerRequest = SimulateRequest | SimulateProgramRequest
+
 export type WorkerResponse =
-  | { type: 'result'; result: SimulationResult }
-  | { type: 'error';  message: string }
+  | { type: 'result';  result: SimulationResult }
+  | { type: 'program'; elements: ElementOutcome[]; score: ProgramScore }
+  | { type: 'error';   message: string }
 
 // mulberry32: small, fast, deterministic PRNG — good enough for gaussian sampling
 function mulberry32(seed: number): () => number {
@@ -34,18 +52,31 @@ function mulberry32(seed: number): () => number {
 
 const scope = self as DedicatedWorkerGlobalScope
 
-scope.onmessage = (event: MessageEvent<SimulateRequest>) => {
+scope.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const data = event.data
-  if (!data || data.type !== 'simulate') {
-    scope.postMessage({ type: 'error', message: 'unknown message type' } satisfies WorkerResponse)
+  if (!data) {
+    scope.postMessage({ type: 'error', message: 'empty message' } satisfies WorkerResponse)
     return
   }
   try {
     const rng = typeof data.contextFlags?.seed === 'number'
       ? mulberry32(data.contextFlags.seed)
       : Math.random
-    const result = simulate(data.skater, data.program, data.judges, data.contextFlags ?? {}, rng)
-    scope.postMessage({ type: 'result', result } satisfies WorkerResponse)
+
+    if (data.type === 'simulate') {
+      const result = simulate(data.skater, data.program, data.judges, data.contextFlags ?? {}, rng)
+      scope.postMessage({ type: 'result', result } satisfies WorkerResponse)
+      return
+    }
+
+    if (data.type === 'simulate-program') {
+      const elements = simulateProgramElements(data.program, data.skater, data.contextFlags ?? {}, rng)
+      const score    = finalizeProgramScore(elements, data.skater, data.program, data.judges)
+      scope.postMessage({ type: 'program', elements, score } satisfies WorkerResponse)
+      return
+    }
+
+    scope.postMessage({ type: 'error', message: 'unknown message type' } satisfies WorkerResponse)
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     scope.postMessage({ type: 'error', message } satisfies WorkerResponse)

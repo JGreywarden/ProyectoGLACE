@@ -1,10 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import {
+  applyMomentToElements,
   applyMomentToResult,
   computeGOE,
   computeTES,
   computeTESElement,
+  finalizeProgramScore,
   simulate,
+  simulateProgramElements,
+  summarizeMomentImpact,
   trimmedMean,
   applyJudgeBias,
   type CompetitionContextFlags,
@@ -255,7 +259,7 @@ describe('applyMomentToResult', () => {
   it('adds goeBonusCurrent only to the element at fromElementIndex', () => {
     const outcome: MomentOutcome = {
       goeBonusCurrent: 1.0, goeBonusRemaining: 0,
-      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }
     const next = applyMomentToResult(baseResult, outcome, 0, elements)
     // ΔTES = 4.2 × 0.10 × 1.0 = 0.42
@@ -266,7 +270,7 @@ describe('applyMomentToResult', () => {
   it('adds goeBonusRemaining to every element after fromElementIndex', () => {
     const outcome: MomentOutcome = {
       goeBonusCurrent: 0, goeBonusRemaining: 0.3,
-      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }
     const next = applyMomentToResult(baseResult, outcome, 0, elements)
     // ΔTES = (5.3 + 5.9) × 0.10 × 0.3 = 0.336
@@ -276,7 +280,7 @@ describe('applyMomentToResult', () => {
   it('does not mutate the input result', () => {
     const outcome: MomentOutcome = {
       goeBonusCurrent: 0.5, goeBonusRemaining: 0.1,
-      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }
     const before = JSON.stringify(baseResult)
     applyMomentToResult(baseResult, outcome, 1, elements)
@@ -286,7 +290,7 @@ describe('applyMomentToResult', () => {
   it('is a no-op when programElements is empty', () => {
     const outcome: MomentOutcome = {
       goeBonusCurrent: 1, goeBonusRemaining: 1,
-      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }
     const next = applyMomentToResult(baseResult, outcome, 0, [])
     expect(next.tes).toBe(baseResult.tes)
@@ -296,7 +300,7 @@ describe('applyMomentToResult', () => {
   it('clamps fromElementIndex out of range to a valid position', () => {
     const outcome: MomentOutcome = {
       goeBonusCurrent: 1.0, goeBonusRemaining: 0,
-      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }
     // index 99 is treated as last (index 2)
     const next = applyMomentToResult(baseResult, outcome, 99, elements)
@@ -308,10 +312,168 @@ describe('applyMomentToResult', () => {
     const r: CompetitionResult = { ...baseResult, deducciones: 2 }
     const outcome: MomentOutcome = {
       goeBonusCurrent: 0.5, goeBonusRemaining: 0,
-      varianzaMultiplier: 1, bondDelta: 0, flagsPatch: {},
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }
     const next = applyMomentToResult(r, outcome, 1, elements)
     // total = tes' + pcs - deducciones = 100.265 + 80 - 2 = 178.265
     expect(next.total).toBeCloseTo(next.tes + next.pcs - next.deducciones, 5)
+  })
+})
+
+// ─── simulateProgramElements + finalizeProgramScore ──────────────────────────
+
+describe('simulateProgramElements', () => {
+  function tinyProgram(): ProgramData {
+    const elementos: ProgramElement[] = [
+      { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 1, esCombinacion: false, rotaciones: 3 },
+      { tipo: 'giro',  tipoSalto: null,     dificultadBase: 3.0, posicionEnPrograma: 2, esCombinacion: false, rotaciones: null },
+      { tipo: 'salto', tipoSalto: 'flip',   dificultadBase: 5.3, posicionEnPrograma: 3, esCombinacion: false, rotaciones: 3 },
+    ]
+    return { ...DEFAULT_PROGRAM_DATA, tipo: 'libre', elementos }
+  }
+
+  it('returns one ElementOutcome per program element with goe in [-5, +5]', () => {
+    const skater = makeSkater()
+    const elements = simulateProgramElements(tinyProgram(), skater, {}, mulberry32(7))
+    expect(elements).toHaveLength(3)
+    for (const e of elements) {
+      expect(e.goe).toBeGreaterThanOrEqual(-5)
+      expect(e.goe).toBeLessThanOrEqual(5)
+      expect(e.tesBruto).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it('is reproducible for a given seeded rng', () => {
+    const skater = makeSkater()
+    const a = simulateProgramElements(tinyProgram(), skater, {}, mulberry32(123))
+    const b = simulateProgramElements(tinyProgram(), skater, {}, mulberry32(123))
+    expect(a.map(e => e.goe)).toEqual(b.map(e => e.goe))
+  })
+
+  it('falls register caída with the standard ISU deduction across many trials', () => {
+    // very weak, very tired skater → some trials must trigger a fall
+    const skater = makeSkater({
+      technical: { saltos: 5, giros: 5, secuenciaDePasos: 5, amplitudLinea: 5 },
+      psychological: { resistenciaMental: 0, presionCompetitiva: -100 },
+      weeklyState: { fatigaAcumulada: 100, estres: 100 },
+    })
+    let totalFalls = 0
+    for (let seed = 1; seed <= 80; seed++) {
+      const elements = simulateProgramElements(tinyProgram(), skater, {}, mulberry32(seed))
+      for (const e of elements) {
+        if (e.element.tipo === 'salto' && e.caida) {
+          totalFalls += 1
+          expect(e.deduccion).toBeCloseTo(1.0, 5)
+        }
+      }
+    }
+    expect(totalFalls).toBeGreaterThan(0)
+  })
+})
+
+describe('finalizeProgramScore', () => {
+  it('sums TES and deductions across the elements and reflects the total', () => {
+    const skater = makeSkater({
+      technical: { saltos: 70, giros: 70, secuenciaDePasos: 70, amplitudLinea: 70 },
+    })
+    const program: ProgramData = {
+      ...DEFAULT_PROGRAM_DATA,
+      tipo: 'libre',
+      elementos: Array.from({ length: 6 }, (_, i) => ({
+        tipo: 'salto' as const,
+        tipoSalto: 'toeloop' as const,
+        dificultadBase: 4.2,
+        posicionEnPrograma: i + 1,
+        esCombinacion: false,
+        rotaciones: 3 as const,
+      })),
+    }
+    const judges = makeNeutralJudges(7)
+    const elements = simulateProgramElements(program, skater, {}, mulberry32(42))
+    const score = finalizeProgramScore(elements, skater, program, judges)
+    const expectedTes = elements.reduce((s, e) => s + e.tesBruto, 0)
+    const expectedDed = elements.reduce((s, e) => s + e.deduccion, 0)
+    expect(score.tes).toBeCloseTo(expectedTes, 5)
+    expect(score.deducciones).toBeCloseTo(expectedDed, 5)
+    expect(score.total).toBeCloseTo(score.tes + score.pcs - score.deducciones, 5)
+    expect(score.programType).toBe('libre')
+  })
+})
+
+describe('applyMomentToElements', () => {
+  function jumpyProgram(): ProgramElement[] {
+    return [
+      { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 1, esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'flip',    dificultadBase: 5.3, posicionEnPrograma: 2, esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'lutz',    dificultadBase: 5.9, posicionEnPrograma: 3, esCombinacion: false, rotaciones: 3 },
+    ]
+  }
+
+  it('mutating elements at index 0 with goeBonusCurrent updates only that element', () => {
+    // moderate skater so the bonus does not bump us against the [-5, +5] clamp
+    const skater = makeSkater({
+      technical: { saltos: 50, giros: 50, secuenciaDePasos: 50, amplitudLinea: 50 },
+      psychological: { resistenciaMental: 80, presionCompetitiva: 0 },
+    })
+    const program: ProgramData = { ...DEFAULT_PROGRAM_DATA, tipo: 'libre', elementos: jumpyProgram() }
+    const elements = simulateProgramElements(program, skater, {}, mulberry32(7))
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 1.0, goeBonusRemaining: 0,
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
+    }
+    const after = applyMomentToElements(elements, outcome, 0, false)
+    expect(after[0].goe).toBeCloseTo(elements[0].goe + 1.0, 5)
+    expect(after[1].goe).toBeCloseTo(elements[1].goe, 5)
+  })
+
+  it('causesFall forces the current jump into a fall and registers the deduction', () => {
+    const skater = makeSkater({
+      technical: { saltos: 80, giros: 80, secuenciaDePasos: 80 },
+    })
+    const program: ProgramData = { ...DEFAULT_PROGRAM_DATA, tipo: 'libre', elementos: jumpyProgram() }
+    const elements = simulateProgramElements(program, skater, {}, mulberry32(11))
+    const outcome: MomentOutcome = {
+      goeBonusCurrent: 0, goeBonusRemaining: 0,
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: true, flagsPatch: {},
+    }
+    const after = applyMomentToElements(elements, outcome, 1, true)
+    expect(after[1].caida).toBe(true)
+    expect(after[1].deduccion).toBeCloseTo(1.0, 5)
+    // first-fall propagation (Anna Müller) bites the next element when no prior fall
+    expect(after[2].goe).toBeLessThan(elements[2].goe)
+  })
+
+  it('does not mutate the input array', () => {
+    const elements = [
+      { element: jumpyProgram()[0], goe: 1.0, caida: false, invalid: false, tesBruto: 4.62, deduccion: 0 },
+      { element: jumpyProgram()[1], goe: 0.5, caida: false, invalid: false, tesBruto: 5.565, deduccion: 0 },
+    ]
+    const before = JSON.stringify(elements)
+    applyMomentToElements(elements, {
+      goeBonusCurrent: 1, goeBonusRemaining: 1,
+      varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
+    }, 0, false)
+    expect(JSON.stringify(elements)).toBe(before)
+  })
+})
+
+describe('summarizeMomentImpact', () => {
+  it('reports a positive deltaTes when the moment improves execution', () => {
+    const program: ProgramElement[] = [
+      { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 1, esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'flip',    dificultadBase: 5.3, posicionEnPrograma: 2, esCombinacion: false, rotaciones: 3 },
+    ]
+    const before = [
+      { element: program[0], goe: 0.0, caida: false, invalid: false, tesBruto: 4.2, deduccion: 0 },
+      { element: program[1], goe: 0.0, caida: false, invalid: false, tesBruto: 5.3, deduccion: 0 },
+    ]
+    const after = [
+      { element: program[0], goe: 1.0, caida: false, invalid: false, tesBruto: 4.62, deduccion: 0 },
+      { element: program[1], goe: 0.0, caida: false, invalid: false, tesBruto: 5.3, deduccion: 0 },
+    ]
+    const impact = summarizeMomentImpact(before, after, 'libre', 'mom-1', 'opt-a', false)
+    expect(impact.deltaTes).toBeCloseTo(0.42, 5)
+    expect(impact.causesFall).toBe(false)
+    expect(impact.descripcion).toContain('+0.4')
   })
 })

@@ -9,8 +9,11 @@ import {
   useTrainingStore,
   type ActivityId,
 } from '@/features/training'
+import { activityAllowedDuringInjury } from '@/features/athlete'
+import type { CashFlowBreakdown, FinancialPressureState } from '@/features/economy'
 import { BondMeter, SaveSlotPicker } from '@/components/ui'
 import type { InstallationId, InstallationLevel } from '@/types/club'
+import type { InjurySeverity } from '@/types/skater'
 
 const ACTIVITIES: ActivityId[] = ['tecnico', 'fisico', 'mental', 'descanso', 'ensayo', 'dialogo']
 
@@ -54,6 +57,10 @@ export function WeeklyPlanning() {
       season: s.currentSeason,
     })),
   )
+  // narrow selectors so the panel only re-renders when the breakdown changes
+  const lastEconomyBreakdown = useGameStore(s => s.lastEconomyBreakdown)
+  const lastPressureState    = useGameStore(s => s.lastPressureState)
+  const [economyOpen, setEconomyOpen] = useState(false)
   const schedule = useTrainingStore(s =>
     skater ? s.schedules[skater.id] : undefined,
   )
@@ -111,6 +118,7 @@ export function WeeklyPlanning() {
 
   const fatigueProj = (skater.weeklyState.fatigaAcumulada ?? 0) + (projection?.fatigueDelta ?? 0)
   const stressProj  = (skater.weeklyState.estres ?? 0) + (projection?.stressDelta ?? 0)
+  const injury = skater.weeklyState.currentInjury
   const isCompetitionWeek = season.calendario.some(
     c => c.semana === season.semanaActual && c.clasificado,
   )
@@ -189,6 +197,40 @@ export function WeeklyPlanning() {
           </div>
         </header>
 
+        {/* ─── INJURY BANNER ────────────────────────────────────────────────── */}
+        {injury && (
+          <div className="col-span-12 mb-6 -mt-6">
+            <InjuryBanner
+              severity={injury.severity}
+              weeksRemaining={injury.recoveryWeeksRemaining}
+              weeksTotal={injury.recoveryWeeksTotal}
+              willMissCompetition={isCompetitionWeek && injury.severity === 'grave'}
+            />
+          </div>
+        )}
+
+        {/* ─── FINANCIAL PRESSURE BANNER ────────────────────────────────────── */}
+        {lastPressureState && lastPressureState !== 'estable' && (
+          <div className="col-span-12 mb-6">
+            <PressureBanner
+              state={lastPressureState}
+              onOpenEconomy={() => setEconomyOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* ─── ECONOMY PANEL (collapsible) ───────────────────────────────────── */}
+        {lastEconomyBreakdown && (
+          <div className="col-span-12 mb-10">
+            <EconomyPanel
+              breakdown={lastEconomyBreakdown}
+              reservas={club.presupuestoReservas}
+              open={economyOpen}
+              onToggle={() => setEconomyOpen(o => !o)}
+            />
+          </div>
+        )}
+
         {/* ─── BODY: 8/4 split. Itinerary on left, side rail on right. ──────── */}
 
         {/* itinerary */}
@@ -254,21 +296,36 @@ export function WeeklyPlanning() {
                     <div className="overflow-hidden border-b border-border-subtle bg-bg-base/40 px-14 py-5">
                       <span className="glace-eyebrow">— elige</span>
                       <div className="mt-3 grid grid-cols-2 gap-x-12 gap-y-2 md:grid-cols-3">
-                        {ACTIVITIES.map(a => (
-                          <button
-                            key={a}
-                            type="button"
-                            onClick={() => pickActivity(slot.index, a)}
-                            className="group flex flex-col gap-0.5 text-left"
-                          >
-                            <span className="font-display text-2xl text-content-secondary group-hover:text-ice-200 transition-colors">
-                              {ACTIVITY_DEFINITIONS[a].label.toLowerCase()}
-                            </span>
-                            <span className="font-display italic text-xs text-content-muted">
-                              {ACTIVITY_VOICE[a]}
-                            </span>
-                          </button>
-                        ))}
+                        {ACTIVITIES.map(a => {
+                          const blocked = injury
+                            ? !activityAllowedDuringInjury(a, injury.severity)
+                            : false
+                          return (
+                            <button
+                              key={a}
+                              type="button"
+                              disabled={blocked}
+                              onClick={() => pickActivity(slot.index, a)}
+                              className={[
+                                'group flex flex-col gap-0.5 text-left transition-opacity',
+                                blocked ? 'opacity-30 cursor-not-allowed' : '',
+                              ].join(' ')}
+                              title={blocked ? 'bloqueada por la lesión actual' : undefined}
+                            >
+                              <span className={[
+                                'font-display text-2xl transition-colors',
+                                blocked
+                                  ? 'text-content-disabled line-through decoration-danger/60'
+                                  : 'text-content-secondary group-hover:text-ice-200',
+                              ].join(' ')}>
+                                {ACTIVITY_DEFINITIONS[a].label.toLowerCase()}
+                              </span>
+                              <span className="font-display italic text-xs text-content-muted">
+                                {blocked ? 'lesionada — no disponible' : ACTIVITY_VOICE[a]}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
                       {!empty && (
                         <button
@@ -321,6 +378,7 @@ export function WeeklyPlanning() {
             <span className="glace-eyebrow">— consultar</span>
             <NavLine label="ficha del patinador" onClick={() => navigate('/ficha')} />
             <NavLine label="calendario isu" onClick={() => navigate('/calendario')} />
+            <NavLine label="diario del entrenador" onClick={() => navigate('/diario')} />
           </nav>
 
           {/* persistence */}
@@ -418,6 +476,188 @@ function NavLine({ label, onClick }: { label: string; onClick: () => void }) {
         →
       </span>
     </button>
+  )
+}
+
+const SEVERITY_LABEL: Record<InjurySeverity, string> = {
+  leve:     'lesión leve',
+  moderada: 'lesión moderada',
+  grave:    'lesión grave',
+}
+
+const SEVERITY_COPY: Record<InjurySeverity, string> = {
+  leve:     'sigue trabajando bajo agua, mental y descanso. ensayo permitido.',
+  moderada: 'sin pista. solo mental, descanso y diálogo. el ensayo queda fuera.',
+  grave:    'parón forzado. solo descanso, diálogo y trabajo psicológico. competición perdida si toca.',
+}
+
+function InjuryBanner({
+  severity, weeksRemaining, weeksTotal, willMissCompetition,
+}: {
+  severity:            InjurySeverity
+  weeksRemaining:      number
+  weeksTotal:          number
+  willMissCompetition: boolean
+}) {
+  const accent = severity === 'grave' ? 'border-danger text-danger' : severity === 'moderada' ? 'border-gold text-gold' : 'border-ice-400 text-ice-300'
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={['flex flex-col gap-2 border-l-4 pl-5 py-3 bg-bg-base/40', accent].join(' ')}
+    >
+      <div className="flex items-baseline gap-3">
+        <span className="glace-eyebrow">— {SEVERITY_LABEL[severity]}</span>
+        <span className="glace-hairline flex-1" />
+        <span className="font-display tabular-nums text-base text-content-secondary">
+          {weeksRemaining} {weeksRemaining === 1 ? 'semana' : 'semanas'}
+          <span className="text-content-disabled"> de {weeksTotal}</span>
+        </span>
+      </div>
+      <p className="font-display italic text-base text-content-secondary">
+        {SEVERITY_COPY[severity]}
+      </p>
+      {willMissCompetition && (
+        <p className="font-display italic text-sm text-danger">
+          la competición de esta semana se pierde por la lesión.
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─── financial pressure banner ──────────────────────────────────────────────
+
+const PRESSURE_LABEL: Record<Exclude<FinancialPressureState, 'estable'>, string> = {
+  leve:    'reservas ajustadas',
+  visible: 'presión financiera visible',
+  crisis:  'crisis financiera',
+}
+
+const PRESSURE_COPY: Record<Exclude<FinancialPressureState, 'estable'>, string> = {
+  leve:    'cobertura entre 4 y 8 semanas. ningún efecto inmediato, pero conviene revisar gastos.',
+  visible: 'cobertura entre 2 y 4 semanas. el estrés del patinador sube cada semana.',
+  crisis:  'menos de 2 semanas de cobertura. evento de crisis financiera activo y estrés acelerado.',
+}
+
+function PressureBanner({
+  state, onOpenEconomy,
+}: {
+  state: FinancialPressureState
+  onOpenEconomy: () => void
+}) {
+  if (state === 'estable') return null
+  const accent = state === 'crisis' ? 'border-danger text-danger' : state === 'visible' ? 'border-gold text-gold' : 'border-ice-400 text-ice-300'
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={['flex items-baseline gap-4 border-l-4 pl-5 py-3 bg-bg-base/40', accent].join(' ')}
+    >
+      <span className="glace-eyebrow">— {PRESSURE_LABEL[state]}</span>
+      <p className="font-display italic text-base text-content-secondary flex-1">
+        {PRESSURE_COPY[state]}
+      </p>
+      <button
+        type="button"
+        onClick={onOpenEconomy}
+        className="glace-eyebrow text-content-secondary hover:text-ice-300 transition-colors"
+      >
+        ver desglose →
+      </button>
+    </div>
+  )
+}
+
+// ─── economy panel ──────────────────────────────────────────────────────────
+
+function EconomyPanel({
+  breakdown, reservas, open, onToggle,
+}: {
+  breakdown: CashFlowBreakdown
+  reservas:  number
+  open:      boolean
+  onToggle:  () => void
+}) {
+  const sumIngresos = breakdown.ingresos.reduce((s, l) => s + l.amount, 0)
+  const sumGastos   = breakdown.gastos.reduce((s, l) => s + l.amount, 0)
+  const total       = breakdown.total
+  const totalColor  = total >= 0 ? 'text-success' : 'text-danger'
+  const sign        = total > 0 ? '+' : total < 0 ? '−' : '±'
+  return (
+    <div className="border-l-2 border-l-border-subtle pl-5 -ml-5">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-baseline gap-4 border-b border-border-subtle pb-2 text-left"
+      >
+        <span className="glace-eyebrow">— movimientos de la última semana</span>
+        <span className="glace-hairline flex-1" />
+        <span className={['font-display tabular-nums text-2xl', totalColor].join(' ')}>
+          {sign}{Math.abs(Math.round(total)).toLocaleString('es-ES')} €
+        </span>
+        <span className={['font-display text-xl text-content-disabled transition-transform', open ? 'rotate-180' : ''].join(' ')}>
+          ⌄
+        </span>
+      </button>
+      {open && (
+        <div className="grid grid-cols-12 gap-x-8 gap-y-2 pt-4">
+          <div className="col-span-12 md:col-span-6 flex flex-col gap-1.5">
+            <span className="glace-eyebrow text-success">— ingresos</span>
+            {breakdown.ingresos.length === 0 && (
+              <span className="font-display italic text-sm text-content-muted">sin ingresos esta semana</span>
+            )}
+            {breakdown.ingresos.map((line, i) => (
+              <CashRow key={`in-${i}`} label={line.label} amount={line.amount} positive />
+            ))}
+            <div className="mt-1 flex items-baseline justify-between border-t border-border-subtle pt-1">
+              <span className="font-display italic text-sm text-content-muted">total ingresos</span>
+              <span className="font-display tabular-nums text-base text-success">
+                +{Math.round(sumIngresos).toLocaleString('es-ES')} €
+              </span>
+            </div>
+          </div>
+
+          <div className="col-span-12 md:col-span-6 flex flex-col gap-1.5">
+            <span className="glace-eyebrow text-danger">— gastos</span>
+            {breakdown.gastos.length === 0 && (
+              <span className="font-display italic text-sm text-content-muted">sin gastos esta semana</span>
+            )}
+            {breakdown.gastos.map((line, i) => (
+              <CashRow key={`out-${i}`} label={line.label} amount={line.amount} positive={false} />
+            ))}
+            <div className="mt-1 flex items-baseline justify-between border-t border-border-subtle pt-1">
+              <span className="font-display italic text-sm text-content-muted">total gastos</span>
+              <span className="font-display tabular-nums text-base text-danger">
+                −{Math.round(sumGastos).toLocaleString('es-ES')} €
+              </span>
+            </div>
+          </div>
+
+          <div className="col-span-12 mt-3 flex items-baseline justify-between border-t border-border-subtle pt-3">
+            <span className="font-display italic text-base text-content-secondary">reservas tras la semana</span>
+            <span className="font-display tabular-nums text-2xl text-content-primary">
+              {Math.round(reservas).toLocaleString('es-ES')} €
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function CashRow({
+  label, amount, positive,
+}: { label: string; amount: number; positive: boolean }) {
+  const color = positive ? 'text-success' : 'text-danger'
+  const sign  = positive ? '+' : '−'
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="font-display italic text-sm text-content-secondary truncate">{label}</span>
+      <span className={['font-display tabular-nums text-sm whitespace-nowrap', color].join(' ')}>
+        {sign}{Math.round(amount).toLocaleString('es-ES')} €
+      </span>
+    </div>
   )
 }
 

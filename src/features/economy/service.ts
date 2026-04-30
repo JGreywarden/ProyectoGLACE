@@ -12,9 +12,11 @@ import {
   PRESION_CRISIS_STRESS_WEEKLY,
   SPONSOR_REVIEW_WINDOW_WEEKS,
   ISU_PRIZE_MONEY,
+  TRAVEL_COST_BY_COMPETITION_TYPE,
 } from '@/lib/balance'
 import type { ClubData, Sponsor } from '@/types/club'
 import type {
+  CompetitionEconomy,
   SeasonData,
   CompetitionResult,
   CompetitionType,
@@ -31,24 +33,45 @@ export interface SponsorReview {
   lost: Sponsor[]
 }
 
+/** one human-readable line that contributes to the weekly cash flow */
+export interface CashFlowLine {
+  label:  string
+  amount: number
+}
+
+export interface CashFlowBreakdown {
+  /** sponsors, federation grant, installation income, etc. (sign always positive) */
+  ingresos: CashFlowLine[]
+  /** base operations, maintenance, etc. (recorded as positive numbers; subtract from total) */
+  gastos:   CashFlowLine[]
+  /** sum(ingresos) − sum(gastos) */
+  total:    number
+}
+
 // ─── 1. weekly cash flow ──────────────────────────────────────────────────────
 
 /**
- * net cash delta for the current week (€).
- * income: active sponsors + federation grant + installation-derived income.
- * outflow: base operating cost + level-weighted installation maintenance.
- * installations catalog is passed explicitly so the service remains pure.
+ * fully detailed cash-flow breakdown for the current week. each contributor
+ * appears as its own line so the WeeklyPlanning panel can render labels with
+ * amounts; the bare net number is in `total`.
+ *
+ * income lines: per-sponsor (one each), federation grant, installation rents.
+ * expense lines: base operations, per-installation maintenance.
  */
-export function computeWeeklyCashFlow(
+export function computeWeeklyCashFlowBreakdown(
   club: ClubData,
   _season: SeasonData,
   installationsCatalog: InstallationData[] = [],
-): number {
-  // sponsors
-  const sponsorIncome = club.sponsors.reduce(
-    (sum, s) => sum + s.ingresoSemanal,
-    0,
-  )
+): CashFlowBreakdown {
+  const ingresos: CashFlowLine[] = []
+  const gastos:   CashFlowLine[] = []
+
+  // sponsors — one line per active sponsor so the player sees what each one pays
+  for (const s of club.sponsors) {
+    if (s.ingresoSemanal > 0) {
+      ingresos.push({ label: `sponsor · ${s.nombre}`, amount: s.ingresoSemanal })
+    }
+  }
 
   // subvención federativa: multiplicador 0.5 (reputacion=0) a 1.5 (reputacion=100)
   const institutional = clamp01to100(club.reputacion.institucional)
@@ -57,26 +80,44 @@ export function computeWeeklyCashFlow(
     (FEDERATION_GRANT_MULT_MAX - FEDERATION_GRANT_MULT_MIN) *
       (institutional / 100)
   const federationGrant = FEDERATION_GRANT_BASE_WEEKLY * grantMult
+  if (federationGrant > 0) {
+    ingresos.push({ label: 'subvención federativa', amount: federationGrant })
+  }
 
-  // ingresos de instalaciones según nivel actual y mantenimiento acumulativo
-  let installationIncome = 0
-  let installationMaintenance = 0
+  // operación base
+  gastos.push({ label: 'gastos operativos base', amount: WEEKLY_EXPENSE_BASE })
+
+  // ingresos y mantenimiento por instalación construida
   for (const inst of club.instalaciones) {
     if (inst.nivel === 0) continue
-    installationMaintenance +=
-      inst.nivel * WEEKLY_INSTALLATION_MAINTENANCE_PER_LEVEL
+    const maintenance = inst.nivel * WEEKLY_INSTALLATION_MAINTENANCE_PER_LEVEL
+    gastos.push({ label: `mantenimiento · ${inst.id} (nv ${inst.nivel})`, amount: maintenance })
     const catalogEntry = installationsCatalog.find(c => c.id === inst.id)
     if (!catalogEntry) continue
     const levelData = catalogEntry.niveles[inst.nivel]
     if (levelData?.bonificaciones.ingresoSemanal) {
-      installationIncome += levelData.bonificaciones.ingresoSemanal
+      ingresos.push({
+        label:  `instalación · ${inst.id}`,
+        amount: levelData.bonificaciones.ingresoSemanal,
+      })
     }
   }
 
-  const income = sponsorIncome + federationGrant + installationIncome
-  const expenses = WEEKLY_EXPENSE_BASE + installationMaintenance
+  const totalIngresos = ingresos.reduce((s, l) => s + l.amount, 0)
+  const totalGastos   = gastos.reduce((s, l) => s + l.amount, 0)
+  return { ingresos, gastos, total: totalIngresos - totalGastos }
+}
 
-  return income - expenses
+/**
+ * net cash delta for the current week (€). thin wrapper over the detailed
+ * breakdown so existing callers that only need the total keep working.
+ */
+export function computeWeeklyCashFlow(
+  club: ClubData,
+  season: SeasonData,
+  installationsCatalog: InstallationData[] = [],
+): number {
+  return computeWeeklyCashFlowBreakdown(club, season, installationsCatalog).total
 }
 
 // ─── 2. financial pressure state ──────────────────────────────────────────────
@@ -219,19 +260,16 @@ function competitionFailsSponsor(
 // ─── 5. prize money ───────────────────────────────────────────────────────────
 
 /**
- * transfers ISU prize money to the club reserves when the skater is on the
- * podium (posicion <= 3). returns a new ClubData — original is not mutated.
- * unknown or non-podium results leave the club untouched.
+ * transfers ISU prize money to the club reserves for any qualifying position
+ * (some events pay down to 6th place). returns a new ClubData — original is
+ * not mutated. non-paying positions leave the club untouched.
  */
 export function applyPrizeMoney(
   club: ClubData,
   competitionResult: CompetitionResult,
   competitionType: CompetitionType,
 ): ClubData {
-  if (competitionResult.posicion < 1 || competitionResult.posicion > 3) {
-    return club
-  }
-  const amount = getPrizeAmount(competitionType, competitionResult.posicion)
+  const amount = computePrizeAmount(competitionResult, competitionType)
   if (amount <= 0) return club
   return {
     ...club,
@@ -239,18 +277,57 @@ export function applyPrizeMoney(
   }
 }
 
-function getPrizeAmount(type: CompetitionType, posicion: number): number {
-  const pos = posicion as 1 | 2 | 3
-  switch (type) {
-    case 'nacional':       return ISU_PRIZE_MONEY.NATIONAL[pos]      ?? 0
-    case 'internacional':  return ISU_PRIZE_MONEY.INTERNATIONAL[pos] ?? 0
-    case 'grandprix':      return ISU_PRIZE_MONEY.GP[pos]            ?? 0
-    case 'finalGrandprix': return ISU_PRIZE_MONEY.GP_FINAL[pos]      ?? 0
-    case 'europeo':        return ISU_PRIZE_MONEY.EUROPEAN[pos]      ?? 0
-    case 'mundial':        return ISU_PRIZE_MONEY.WORLDS[pos]        ?? 0
-    case 'olimpico':       return ISU_PRIZE_MONEY.OLYMPIC[pos]       ?? 0
-    default:               return 0
+/** prize money for a player's position; 0 when off-podium or table missing */
+export function computePrizeAmount(
+  result: CompetitionResult,
+  type: CompetitionType = result.tipo,
+): number {
+  if (result.posicion < 1) return 0
+  return getPrizeAmount(type, result.posicion)
+}
+
+/** travel cost for attending one competition: hotel, flights, per diem staff */
+export function computeTravelCost(type: CompetitionType): number {
+  return TRAVEL_COST_BY_COMPETITION_TYPE[type] ?? 0
+}
+
+/**
+ * full economic outcome for one competition. premio + bonoExtra − gastoViaje.
+ * the orchestrator surfaces this on `CompetitionResult.economiaDetalle` so the
+ * UI can render a "Premio: X · Viaje: Y · Neto: Z" breakdown.
+ */
+export function computeCompetitionEconomy(
+  result: CompetitionResult,
+): CompetitionEconomy {
+  const premio     = computePrizeAmount(result)
+  const gastoViaje = computeTravelCost(result.tipo)
+  // bonoExtra reservado para Fase 2 (sponsors con bonos por podio); 0 por ahora
+  const bonoExtra  = 0
+  return {
+    premio,
+    gastoViaje,
+    bonoExtra,
+    neto: premio + bonoExtra - gastoViaje,
   }
+}
+
+function getPrizeAmount(type: CompetitionType, posicion: number): number {
+  // tables in @/lib/balance go up to position 6 for some events (GP, Worlds);
+  // narrow generically and let the optional chain return 0 for unknown rows
+  const table = TABLE_BY_TYPE[type]
+  if (!table) return 0
+  const row = (table as Record<number, number>)[posicion]
+  return typeof row === 'number' ? row : 0
+}
+
+const TABLE_BY_TYPE: Readonly<Partial<Record<CompetitionType, Readonly<Record<number, number>>>>> = {
+  nacional:       ISU_PRIZE_MONEY.NATIONAL,
+  internacional:  ISU_PRIZE_MONEY.INTERNATIONAL,
+  grandprix:      ISU_PRIZE_MONEY.GP,
+  finalGrandprix: ISU_PRIZE_MONEY.GP_FINAL,
+  europeo:        ISU_PRIZE_MONEY.EUROPEAN,
+  mundial:        ISU_PRIZE_MONEY.WORLDS,
+  olimpico:       ISU_PRIZE_MONEY.OLYMPIC,
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

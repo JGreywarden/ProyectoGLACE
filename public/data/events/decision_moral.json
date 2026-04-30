@@ -299,8 +299,12 @@
     "condiciones": {
       "minVinculo": 45,
       "faseTemporada": [
+        "Pico",
+        "Rearme",
         "Cierre"
-      ]
+      ],
+      "contextoTemporal": "pre_competicion",
+      "semanasHastaProximaCompeticion": { "max": 3 }
     },
     "opciones": [
       {

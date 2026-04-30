@@ -6,10 +6,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // competition must be mocked before weekService is imported, otherwise the
 // Web Worker constructor reaches for a URL that vitest/jsdom cannot resolve.
 vi.mock('@/features/competition', () => ({
-  runCompetition: vi.fn(),
+  runCompetition:       vi.fn(),
+  runProgramSimulation: vi.fn(),
 }))
 
-import { runCompetition } from '@/features/competition'
+import { runCompetition, runProgramSimulation } from '@/features/competition'
 import { runWeek, runWeekWithPool } from './weekService'
 import type { WeekContext } from './weekService'
 import { applyEventEffect } from '@/features/narrative'
@@ -25,6 +26,7 @@ import type { SeasonData } from '@/types/season'
 import { DEFAULT_SEASON_DATA } from '@/types/season'
 import type { ProgramData } from '@/types/program'
 import { DEFAULT_PROGRAM_DATA } from '@/types/program'
+import { generateRivalPool, COMPETITION_FIELD_SIZE } from '@/features/rivals'
 
 // ─── fixture helpers ──────────────────────────────────────────────────────────
 
@@ -118,6 +120,7 @@ function makeContext(overrides: Partial<WeekContext> = {}): WeekContext {
 
 beforeEach(() => {
   vi.mocked(runCompetition).mockReset()
+  vi.mocked(runProgramSimulation).mockReset()
 })
 
 describe('runWeek — A: semana normal sin competición ni evento', () => {
@@ -183,14 +186,20 @@ describe('runWeek — B: evento narrativo disparado', () => {
 })
 
 describe('runWeek — C: semana de competición', () => {
-  it('invoca runCompetition y registra el resultado en la temporada', async () => {
-    vi.mocked(runCompetition).mockResolvedValue({
-      tes:         60,
-      pcs:         45,
-      pcsDetalle:  { sk: 9, tr: 9, pe: 9, co: 9, in: 9 },
-      total:       105,
-      caidas:      0,
-      deducciones: 0,
+  it('invoca runProgramSimulation y registra el resultado en la temporada', async () => {
+    // mocked free-skate simulation; SP omitted in this scenario
+    vi.mocked(runProgramSimulation).mockResolvedValue({
+      elements: [],
+      score: {
+        programType: 'libre',
+        elements:    [],
+        tes:         60,
+        pcs:         45,
+        pcsDetalle:  { sk: 9, tr: 9, pe: 9, co: 9, in: 9 },
+        caidas:      0,
+        deducciones: 0,
+        total:       105,
+      },
     })
 
     const season = makeSeason({
@@ -216,7 +225,8 @@ describe('runWeek — C: semana de competición', () => {
 
     const result = await runWeek(ctx, fixedRng(0.5))
 
-    expect(runCompetition).toHaveBeenCalledOnce()
+    // SP not registered in this test → only one program simulation
+    expect(runProgramSimulation).toHaveBeenCalledOnce()
     expect(result.competitionResult).not.toBeNull()
     expect(result.competitionResult?.total).toBe(105)
     // la competición bloquea la selección de eventos semanales
@@ -226,6 +236,71 @@ describe('runWeek — C: semana de competición', () => {
     expect(result.season.resultadosTemporada[0]?.id).toBe(
       result.competitionResult?.id,
     )
+    // sin pool de rivales, la posición se mantiene en 1 (jugador solo)
+    expect(result.competitionResult?.posicion).toBe(1)
+    // desglose económico por competición disponible y consistente
+    expect(result.competitionResult?.economiaDetalle).not.toBeNull()
+    expect(result.competitionResult?.economiaDetalle?.gastoViaje).toBeGreaterThan(0)
+    // economyBreakdown contiene una línea por gasto de viaje del evento
+    expect(result.economyBreakdown.gastos.some(l => l.label.startsWith('viaje'))).toBe(true)
+    // y una línea por premio si el jugador entró en el podio (1º en este caso)
+    expect(result.economyBreakdown.ingresos.some(l => l.label.startsWith('premio'))).toBe(true)
+  })
+})
+
+describe('runWeek — C2: clasificación con pool de rivales', () => {
+  it('produce una clasificación que incluye al jugador y a los rivales del cuadro', async () => {
+    // SP + FP devuelven la misma puntuación moderada — el jugador no estará 1º
+    vi.mocked(runProgramSimulation).mockResolvedValue({
+      elements: [],
+      score: {
+        programType: 'libre',
+        elements:    [],
+        tes:         50,
+        pcs:         40,
+        pcsDetalle:  { sk: 8, tr: 8, pe: 8, co: 8, in: 8 },
+        caidas:      0,
+        deducciones: 0,
+        total:       90,
+      },
+    })
+
+    const season = makeSeason({
+      semanaActual: 8,
+      faseActual:   'Construccion',
+      calendario: [{
+        semana:            8,
+        nombreCompeticion: 'Nacional Test',
+        tipo:              'nacional',
+        clasificado:       true,
+      }],
+    })
+    const ctx = makeContext({
+      season,
+      narrativeContext: {
+        skater:         makeSkater(),
+        season,
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+      programLibre: makeProgram(),
+      rivalsPool:   generateRivalPool(season.temporadaNumero, () => 0.5),
+    })
+
+    const result = await runWeek(ctx, () => 0.5)
+
+    expect(result.competitionResult).not.toBeNull()
+    const cls = result.competitionResult!.clasificacion
+    expect(cls).toBeDefined()
+    expect(cls!.length).toBe(COMPETITION_FIELD_SIZE.nacional)
+    // posiciones consecutivas comenzando en 1
+    expect(cls!.map(c => c.posicion)).toEqual(
+      Array.from({ length: cls!.length }, (_, i) => i + 1),
+    )
+    // el jugador aparece exactamente una vez
+    expect(cls!.filter(c => c.esJugador).length).toBe(1)
+    const playerPos = cls!.find(c => c.esJugador)!.posicion
+    expect(result.competitionResult!.posicion).toBe(playerPos)
   })
 })
 
@@ -282,6 +357,97 @@ describe('runWeek — E: no muta los inputs', () => {
     expect(ctx.skater).toBe(skater)
     expect(ctx.club).toBe(club)
     expect(ctx.season).toBe(season)
+  })
+})
+
+describe('runWeek — E2: lesiones', () => {
+  it('inyecta una nueva lesión cuando el roll cae bajo la probabilidad', async () => {
+    // patinador frágil + carga alta + injuryRoll = 0 garantiza que
+    // resolveWeekEffects produzca un disparador por debajo de cualquier umbral.
+    const fragile: SkaterTrait = { id: 'cuerpo-fragil', active: true, mutated: null }
+    const skater = makeSkater({
+      physical: {
+        techosBiologico: 80,
+        historialLesiones: 90,  // amplificación exponencial
+        velocidadRecuperacion: 60,
+      },
+      traits: [fragile],
+    })
+    const ctx = makeContext({
+      skater,
+      schedule: schedule(['tecnico', 'tecnico', 'fisico', 'ensayo', null]),
+    })
+
+    // rng constante a 0 → effects.injuryRoll === 0 → siempre dispara la lesión
+    const result = await runWeek(ctx, fixedRng(0))
+    expect(result.newInjurySeverity).not.toBeNull()
+    expect(result.skater.weeklyState.currentInjury).not.toBeNull()
+  })
+
+  it('una lesión grave activa salta la competición programada', async () => {
+    const skater = makeSkater({
+      weeklyState: {
+        ...DEFAULT_SKATER_DATA.weeklyState,
+        currentInjury: {
+          injuredAtWeek: 5,
+          recoveryWeeksTotal: 12,
+          recoveryWeeksRemaining: 12,
+          severity: 'grave',
+        },
+      },
+    })
+    const season = makeSeason({
+      semanaActual: 10,
+      faseActual:   'Activacion',
+      calendario: [{
+        semana:            10,
+        nombreCompeticion: 'Nacional Test',
+        tipo:              'nacional',
+        clasificado:       true,
+      }],
+    })
+    const ctx = makeContext({
+      skater, season,
+      narrativeContext: {
+        skater, season,
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+      programLibre: makeProgram(),
+    })
+
+    const result = await runWeek(ctx, fixedRng(0.5))
+    expect(result.competitionSkippedByInjury).toBe(true)
+    expect(result.competitionResult).toBeNull()
+    // la lesión sigue activa con una semana menos
+    expect(result.skater.weeklyState.currentInjury?.recoveryWeeksRemaining).toBe(11)
+  })
+
+  it('al finalizar la última semana de recuperación, historialLesiones aumenta', async () => {
+    const skater = makeSkater({
+      physical: {
+        techosBiologico: 80,
+        historialLesiones: 20,
+        velocidadRecuperacion: 60,
+      },
+      weeklyState: {
+        ...DEFAULT_SKATER_DATA.weeklyState,
+        currentInjury: {
+          injuredAtWeek: 4,
+          recoveryWeeksTotal: 1,
+          recoveryWeeksRemaining: 1,
+          severity: 'moderada',
+        },
+      },
+    })
+    const ctx = makeContext({
+      skater,
+      schedule: schedule(['mental', 'descanso', 'dialogo', null, null]),
+    })
+    const result = await runWeek(ctx, fixedRng(0.5))
+    expect(result.recoveredFromSeverity).toBe('moderada')
+    expect(result.skater.weeklyState.currentInjury).toBeNull()
+    expect(result.skater.physical.historialLesiones).toBe(20 + 12)
   })
 })
 
