@@ -4,7 +4,7 @@ import { DEFAULT_SKATER_DATA } from '@/types/skater'
 import { DEFAULT_COACH_DATA } from '@/types/coach'
 import { DEFAULT_CLUB_DATA } from '@/types/club'
 import { DEFAULT_SEASON_DATA } from '@/types/season'
-import { createDefaultProgram } from '@/features/program/service'
+import { createDefaultProgram } from '@/features/program'
 
 function snapshot(extra: Partial<GameStateSnapshot> = {}): GameStateSnapshot {
   return {
