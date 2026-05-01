@@ -7,9 +7,18 @@ import { type ClubData,   validateClubData }   from '@/types/club'
 import { type SeasonData, type CompetitionResult, validateSeasonData } from '@/types/season'
 import { type ProgramData, validateProgramData } from '@/types/program'
 import { safeStorage } from '@/utils/safeStorage'
-import type { NarrativeEvent } from '@/services/dataService'
+import {
+  isInteger,
+  isIntegerInRange,
+  isPlainObject,
+} from '@/utils/validation'
 import { validateRivalsPool, type RivalsPool } from '@/features/rivals'
-import { validateDecisionHistory, type DecisionRecord } from '@/features/narrative'
+import {
+  validateDecisionHistory,
+  validateNarrativeEvent,
+  type DecisionRecord,
+  type NarrativeEvent,
+} from '@/features/narrative'
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
@@ -172,6 +181,26 @@ function isSaveFile(data: unknown): data is SaveFile {
   if (typeof data !== 'object' || data === null) return false
   const d = data as Record<string, unknown>
   return d['saveVersion'] === 1 && typeof d['fechaGuardado'] === 'string'
+}
+
+/** type guard for a single DialogueLine — week 1–30, season ≥ 1, non-empty speakerId */
+function validateDialogueLine(v: unknown): v is DialogueLine {
+  if (!isPlainObject(v)) return false
+  if (!isIntegerInRange(v['semana'], 1, 30)) return false
+  if (!isInteger(v['temporada']) || (v['temporada'] as number) < 1) return false
+  if (typeof v['speakerId'] !== 'string' || v['speakerId'].length === 0) return false
+  if (typeof v['text'] !== 'string') return false
+  return true
+}
+
+/** narrativeFlags must be a flat record of primitive values */
+function validateNarrativeFlags(v: unknown): v is Record<string, boolean | number | string> {
+  if (!isPlainObject(v)) return false
+  for (const key of Object.keys(v)) {
+    const val = v[key]
+    if (typeof val !== 'boolean' && typeof val !== 'number' && typeof val !== 'string') return false
+  }
+  return true
 }
 
 function tryParse(raw: string): SaveFile | null {
@@ -372,6 +401,42 @@ export function migrateSave(data: unknown): SaveFile {
     decisionHistory = d['decisionHistory']
   }
 
+  // narrativeFlags: every value must be primitive (boolean | number | string)
+  let narrativeFlags: Record<string, boolean | number | string> = {}
+  if (d['narrativeFlags'] !== undefined && d['narrativeFlags'] !== null) {
+    if (!validateNarrativeFlags(d['narrativeFlags'])) {
+      throw new Error('migrateSave: narrativeFlags contiene valores no primitivos')
+    }
+    narrativeFlags = d['narrativeFlags']
+  }
+
+  // dialogueHistory: validate each entry (semana, temporada, speakerId, text)
+  let dialogueHistory: DialogueLine[] = []
+  if (d['dialogueHistory'] !== undefined) {
+    if (!Array.isArray(d['dialogueHistory']) || !d['dialogueHistory'].every(validateDialogueLine)) {
+      throw new Error('migrateSave: dialogueHistory contiene una línea inválida')
+    }
+    dialogueHistory = d['dialogueHistory']
+  }
+
+  // emittedEvents: every entry must be a string
+  let emittedEvents: string[] = []
+  if (d['emittedEvents'] !== undefined) {
+    if (!Array.isArray(d['emittedEvents']) || !d['emittedEvents'].every((s) => typeof s === 'string')) {
+      throw new Error('migrateSave: emittedEvents contiene un id no string')
+    }
+    emittedEvents = d['emittedEvents']
+  }
+
+  // generatedEvents: comes from Claude API (Fase 6); every entry must pass validateNarrativeEvent
+  let generatedEvents: NarrativeEvent[] = []
+  if (d['generatedEvents'] !== undefined) {
+    if (!Array.isArray(d['generatedEvents']) || !d['generatedEvents'].every(validateNarrativeEvent)) {
+      throw new Error('migrateSave: generatedEvents contiene un evento inválido')
+    }
+    generatedEvents = d['generatedEvents']
+  }
+
   // v1 → current: fill in defaults for any fields added after initial release
   return {
     saveVersion:     1,
@@ -381,12 +446,10 @@ export function migrateSave(data: unknown): SaveFile {
     coach:           coach  as CoachData  | null,
     club:            club   as ClubData   | null,
     season:          season as SeasonData | null,
-    narrativeFlags:  (typeof d['narrativeFlags'] === 'object' && d['narrativeFlags'] !== null
-      ? d['narrativeFlags'] as Record<string, boolean | number | string>
-      : {}),
-    dialogueHistory: Array.isArray(d['dialogueHistory']) ? (d['dialogueHistory'] as DialogueLine[])   : [],
-    emittedEvents:   Array.isArray(d['emittedEvents'])   ? (d['emittedEvents']   as string[])         : [],
-    generatedEvents: Array.isArray(d['generatedEvents']) ? (d['generatedEvents'] as NarrativeEvent[]) : [],
+    narrativeFlags,
+    dialogueHistory,
+    emittedEvents,
+    generatedEvents,
     confirmedPrograms: validateConfirmedPrograms(d['confirmedPrograms']),
     rivalsPool,
     decisionHistory,

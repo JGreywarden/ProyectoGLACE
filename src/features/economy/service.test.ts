@@ -272,10 +272,7 @@ describe('applyPrizeMoney', () => {
 
 describe('computeWeeklyCashFlowBreakdown', () => {
   it('totals match computeWeeklyCashFlow', () => {
-    const sponsor: Sponsor = {
-      id: 'sp', nombre: 'Test', ingresoSemanal: 200,
-      metricasExigidas: {},
-    }
+    const sponsor: Sponsor = makeSponsor({ ingresoSemanal: 200 })
     const club = makeClub({ sponsors: [sponsor] })
     const breakdown = computeWeeklyCashFlowBreakdown(club, makeSeason(), [])
     const flat     = computeWeeklyCashFlow(club, makeSeason(), [])
@@ -283,8 +280,8 @@ describe('computeWeeklyCashFlowBreakdown', () => {
   })
 
   it('produces one income line per active sponsor', () => {
-    const a: Sponsor = { id: 'a', nombre: 'Acme',  ingresoSemanal: 300, metricasExigidas: {} }
-    const b: Sponsor = { id: 'b', nombre: 'Beta',  ingresoSemanal: 150, metricasExigidas: {} }
+    const a: Sponsor = makeSponsor({ id: 'a', nombre: 'Acme', ingresoSemanal: 300 })
+    const b: Sponsor = makeSponsor({ id: 'b', nombre: 'Beta', ingresoSemanal: 150 })
     const club = makeClub({ sponsors: [a, b] })
     const out = computeWeeklyCashFlowBreakdown(club, makeSeason(), [])
     expect(out.ingresos.filter(l => l.label.startsWith('sponsor')).length).toBe(2)

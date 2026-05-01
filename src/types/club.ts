@@ -145,7 +145,9 @@ export function isUnderConstruction(
 
 import {
   isFiniteNumber,
+  isInRange,
   isIntegerInRange,
+  isNonNegative,
   isPlainObject,
   hasUnitScoreFields,
 } from '@/utils/validation'
@@ -154,9 +156,33 @@ const CLUB_REPUTATION_KEYS = [
   'tecnica', 'artistica', 'pedagogica', 'institucional', 'mediatica',
 ] as const
 
+const VALID_SPONSOR_TYPES: ReadonlySet<string> = new Set<SponsorType>([
+  'equipamiento', 'indumentaria', 'medios', 'institucional', 'tecnologia',
+])
+
+/** type guard for a single Sponsor — validates SponsorType, finite income, non-negative weeks */
+export function validateSponsor(v: unknown): v is Sponsor {
+  if (!isPlainObject(v)) return false
+  if (typeof v['id'] !== 'string' || v['id'].length === 0) return false
+  if (typeof v['nombre'] !== 'string') return false
+  if (typeof v['tipo'] !== 'string' || !VALID_SPONSOR_TYPES.has(v['tipo'])) return false
+  if (!isFiniteNumber(v['ingresoSemanal']) || !isNonNegative(v['ingresoSemanal'])) return false
+  if (!isIntegerInRange(v['semanasRestantes'], 0, 520)) return false  // hard cap ~10 seasons
+
+  const m = v['metricasExigidas']
+  if (!isPlainObject(m)) return false
+  // each metric is optional; when present must be a finite number in its expected range
+  if (m['clasificacionMinima']     !== undefined && (!isFiniteNumber(m['clasificacionMinima'])     || (m['clasificacionMinima'] as number) < 1)) return false
+  if (m['vinculoMinimo']           !== undefined && !isInRange(m['vinculoMinimo'],           0, 100)) return false
+  if (m['pcsMinimo']               !== undefined && !isFiniteNumber(m['pcsMinimo'])) return false
+  if (m['reputacionCoachMinima']   !== undefined && !isInRange(m['reputacionCoachMinima'], 0, 100)) return false
+
+  return true
+}
+
 /**
  * type guard for complete ClubData.
- * validates installation level 0–4 and reputation 0–100.
+ * validates installation level 0–4, reputation 0–100, and recurses into sponsors.
  * presupuestoReservas can be negative (deuda) but must be finite.
  */
 export function validateClubData(data: unknown): data is ClubData {
@@ -173,6 +199,7 @@ export function validateClubData(data: unknown): data is ClubData {
   }
 
   if (!Array.isArray(data['sponsors'])) return false
+  if (!data['sponsors'].every(validateSponsor)) return false
 
   if (!isPlainObject(data['reputacion'])) return false
   if (!hasUnitScoreFields(data['reputacion'], CLUB_REPUTATION_KEYS)) return false
