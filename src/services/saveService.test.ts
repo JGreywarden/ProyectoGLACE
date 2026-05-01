@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { save, load, deleteSave, migrateSave, type GameStateSnapshot } from './saveService'
-import { DEFAULT_SKATER_DATA } from '@/types'
-import { DEFAULT_COACH_DATA } from '@/types'
-import { DEFAULT_CLUB_DATA } from '@/types'
-import { DEFAULT_SEASON_DATA } from '@/types'
+import {
+  DEFAULT_SKATER_DATA,
+  DEFAULT_COACH_DATA,
+  DEFAULT_CLUB_DATA,
+  DEFAULT_SEASON_DATA,
+} from '@/types'
 import { createDefaultProgram } from '@/features/program'
 
 function snapshot(extra: Partial<GameStateSnapshot> = {}): GameStateSnapshot {
