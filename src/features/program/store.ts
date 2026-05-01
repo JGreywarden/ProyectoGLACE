@@ -4,8 +4,8 @@
 
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { ProgramData, ProgramElement, ProgramType } from '@/types/program'
-import type { SkaterData } from '@/types/skater'
+import type { ProgramData, ProgramElement, ProgramType } from '@/types'
+import type { SkaterData } from '@/types'
 import type { Judge } from '@/services/dataService'
 import {
   computeProjectedScores,

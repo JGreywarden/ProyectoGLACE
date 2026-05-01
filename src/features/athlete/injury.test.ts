@@ -10,8 +10,8 @@ import {
   weeklyInjuryLoad,
   weeklyInjuryProbability,
 } from './injury'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
-import type { InjuryRecord, SkaterData, SkaterTrait } from '@/types/skater'
+import { DEFAULT_SKATER_DATA } from '@/types'
+import type { InjuryRecord, SkaterData, SkaterTrait } from '@/types'
 import type { WeekSchedule } from '@/features/training'
 
 // ─── fixtures ────────────────────────────────────────────────────────────────

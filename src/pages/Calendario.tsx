@@ -3,7 +3,7 @@ import { useShallow } from 'zustand/shallow'
 
 import { useGameStore } from '@/stores/gameStore'
 import { SeasonCell } from '@/components/ui'
-import { getFasePorSemana, type FaseSeason } from '@/types/season'
+import { getFasePorSemana, type FaseSeason } from '@/types'
 
 const FASE_GROUPS: Array<{ fase: FaseSeason; range: [number, number]; label: string }> = [
   { fase: 'Construccion', range: [1, 8],   label: 'construcción' },

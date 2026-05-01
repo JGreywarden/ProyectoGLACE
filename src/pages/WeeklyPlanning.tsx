@@ -12,8 +12,8 @@ import {
 import { activityAllowedDuringInjury } from '@/features/athlete'
 import type { CashFlowBreakdown, FinancialPressureState } from '@/features/economy'
 import { BondMeter, SaveSlotPicker } from '@/components/ui'
-import type { InstallationId, InstallationLevel } from '@/types/club'
-import type { InjurySeverity } from '@/types/skater'
+import type { InstallationId, InstallationLevel } from '@/types'
+import type { InjurySeverity } from '@/types'
 
 const ACTIVITIES: ActivityId[] = ['tecnico', 'fisico', 'mental', 'descanso', 'ensayo', 'dialogo']
 

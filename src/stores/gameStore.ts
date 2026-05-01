@@ -1,9 +1,9 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
-import type { SkaterData } from '@/types/skater'
-import type { CoachData } from '@/types/coach'
-import type { ClubData } from '@/types/club'
-import type { SeasonData } from '@/types/season'
+import type { SkaterData } from '@/types'
+import type { CoachData } from '@/types'
+import type { ClubData } from '@/types'
+import type { SeasonData } from '@/types'
 import type { SessionSummary } from '@/services/saveService'
 import type { CashFlowBreakdown, FinancialPressureState } from '@/features/economy'
 

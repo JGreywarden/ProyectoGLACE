@@ -6,7 +6,7 @@ import {
   BOND_LAYERS,
 } from '@/lib/balance'
 import type { SkaterData, TraitDefinition, TraitId } from '@/types'
-import type { TechnicalAttributes } from '@/types/skater'
+import type { TechnicalAttributes } from '@/types'
 
 import traitsRaw from '@/data/traits.json'
 

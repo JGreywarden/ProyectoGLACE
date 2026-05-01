@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { GameState, useGameStore } from '@/stores/gameStore'
-import { DEFAULT_COACH_DATA, type CoachData } from '@/types/coach'
-import { DEFAULT_CLUB_DATA } from '@/types/club'
-import { DEFAULT_SEASON_DATA, type CompetitionSlot, getFasePorSemana } from '@/types/season'
+import { DEFAULT_COACH_DATA, type CoachData } from '@/types'
+import { DEFAULT_CLUB_DATA } from '@/types'
+import { DEFAULT_SEASON_DATA, type CompetitionSlot, getFasePorSemana } from '@/types'
 import { useNarrativeStore } from '@/features/narrative'
 import {
   loadProspectPool,

@@ -1,7 +1,7 @@
 // rivals — minimal NPC skater data needed to populate the competition
 // classification. each season generates a fresh pool persisted in the SaveFile.
 
-import type { CompetitionType } from '@/types/season'
+import type { CompetitionType } from '@/types'
 
 /** difficulty tier — selects which competitions a rival can realistically attend */
 export type RivalTier = 1 | 2 | 3 | 4 | 5

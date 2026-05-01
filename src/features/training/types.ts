@@ -1,4 +1,4 @@
-import type { TechnicalAttributes } from '@/types/skater'
+import type { TechnicalAttributes } from '@/types'
 
 export type ActivityId = 'tecnico' | 'fisico' | 'mental' | 'descanso' | 'ensayo' | 'dialogo'
 

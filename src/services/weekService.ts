@@ -41,7 +41,7 @@ import {
   WEEKLY_EXPENSE_BASE,
   WEEKLY_INSTALLATION_MAINTENANCE_PER_LEVEL,
 } from '@/lib/balance'
-import type { ClubData, InstallationId, InstallationLevel } from '@/types/club'
+import type { ClubData, InstallationId, InstallationLevel } from '@/types'
 import type {
   CompetitionResult,
   CompetitionSlot,
@@ -49,14 +49,14 @@ import type {
   RankingEntry,
   SeasonData,
   WeekSummary,
-} from '@/types/season'
+} from '@/types'
 import {
   getFasePorSemana,
   makeCompetitionResultId,
-} from '@/types/season'
-import type { InjurySeverity, SkaterData, WeeklyState } from '@/types/skater'
-import type { CoachData } from '@/types/coach'
-import type { ProgramData } from '@/types/program'
+} from '@/types'
+import type { InjurySeverity, SkaterData, WeeklyState } from '@/types'
+import type { CoachData } from '@/types'
+import type { ProgramData } from '@/types'
 import type {
   Judge,
   TraitData,

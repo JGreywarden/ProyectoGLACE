@@ -1,11 +1,11 @@
 // save service — pure functions for game persistence via safeStorage
 // no React, no Zustand; call from saveStore.ts
 
-import { type SkaterData, validateSkaterData } from '@/types/skater'
-import { type CoachData,  validateCoachData }  from '@/types/coach'
-import { type ClubData,   validateClubData }   from '@/types/club'
-import { type SeasonData, type CompetitionResult, validateSeasonData } from '@/types/season'
-import { type ProgramData, validateProgramData } from '@/types/program'
+import { type SkaterData, validateSkaterData } from '@/types'
+import { type CoachData,  validateCoachData }  from '@/types'
+import { type ClubData,   validateClubData }   from '@/types'
+import { type SeasonData, type CompetitionResult, validateSeasonData } from '@/types'
+import { type ProgramData, validateProgramData } from '@/types'
 import { safeStorage } from '@/utils/safeStorage'
 import {
   isInteger,

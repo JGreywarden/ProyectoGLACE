@@ -5,8 +5,8 @@ import {
   computeProjectedScores,
   extractMusicInfo,
 } from './service'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
-import { validateProgramData } from '@/types/program'
+import { DEFAULT_SKATER_DATA } from '@/types'
+import { validateProgramData } from '@/types'
 import type { MusicInfo } from './types'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────

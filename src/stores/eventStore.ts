@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { devtools } from 'zustand/middleware'
 import { bus } from '@/lib/events'
-import type { GlaceEvents } from '@/types/events'
+import type { GlaceEvents } from '@/types'
 
 type EventKey = keyof GlaceEvents
 

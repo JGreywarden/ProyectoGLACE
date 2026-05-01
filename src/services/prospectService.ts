@@ -2,8 +2,8 @@
 // for the founding-skater pick at career start. pure with respect to game state:
 // the caller stores the chosen skater in gameStore.
 
-import type { SkaterData, SkaterTrait, TraitId } from '@/types/skater'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
+import type { SkaterData, SkaterTrait, TraitId } from '@/types'
+import { DEFAULT_SKATER_DATA } from '@/types'
 import type { SkaterProfile } from '@/services/dataService'
 import skatersRaw from '@/data/skaters.json'
 

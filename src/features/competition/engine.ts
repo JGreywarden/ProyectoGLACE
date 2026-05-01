@@ -15,15 +15,15 @@ import {
   PCS_COMPONENT_COEFFICIENTS,
   PCS_PROGRAM_FACTOR,
 } from '@/lib/balance'
-import type { SkaterData } from '@/types/skater'
-import type { ProgramData, ProgramElement } from '@/types/program'
+import type { SkaterData } from '@/types'
+import type { ProgramData, ProgramElement } from '@/types'
 import type {
   CompetitionResult,
   ElementOutcome,
   MomentImpact,
   PCSBreakdown,
   ProgramScore,
-} from '@/types/season'
+} from '@/types'
 import type { Judge } from '@/services/dataService'
 import type { MomentOutcome } from '@/features/narrative'
 

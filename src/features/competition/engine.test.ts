@@ -14,11 +14,11 @@ import {
   type CompetitionContextFlags,
   type RNG,
 } from './engine'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
-import { DEFAULT_PROGRAM_DATA } from '@/types/program'
-import type { SkaterData, TechnicalAttributes, PsychologicalAttributes, WeeklyState, PhysicalPermanentAttributes } from '@/types/skater'
-import type { ProgramData, ProgramElement } from '@/types/program'
-import type { CompetitionResult } from '@/types/season'
+import { DEFAULT_SKATER_DATA } from '@/types'
+import { DEFAULT_PROGRAM_DATA } from '@/types'
+import type { SkaterData, TechnicalAttributes, PsychologicalAttributes, WeeklyState, PhysicalPermanentAttributes } from '@/types'
+import type { ProgramData, ProgramElement } from '@/types'
+import type { CompetitionResult } from '@/types'
 import type { Judge } from '@/services/dataService'
 import type { MomentOutcome } from '@/features/narrative'
 

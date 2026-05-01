@@ -5,14 +5,14 @@ import { useShallow } from 'zustand/shallow'
 import { GameState, useGameStore } from '@/stores/gameStore'
 import { useProgramStore } from '@/features/program'
 import type { MusicInfo, ValidationViolation } from '@/features/program'
-import type { ProgramData, ProgramType } from '@/types/program'
+import type { ProgramData, ProgramType } from '@/types'
 import {
   ISUValidationBanner,
   MusicUploader,
   ProgramElementRow,
   ScoreCard,
 } from '@/components/ui'
-import type { ProgramElement } from '@/types/program'
+import type { ProgramElement } from '@/types'
 
 const PROGRAM_TYPES: readonly ProgramType[] = ['corto', 'libre']
 

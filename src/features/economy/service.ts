@@ -14,14 +14,14 @@ import {
   ISU_PRIZE_MONEY,
   TRAVEL_COST_BY_COMPETITION_TYPE,
 } from '@/lib/balance'
-import type { ClubData, Sponsor } from '@/types/club'
+import type { ClubData, Sponsor } from '@/types'
 import type {
   CompetitionEconomy,
   SeasonData,
   CompetitionResult,
   CompetitionType,
-} from '@/types/season'
-import type { SkaterData, WeeklyState } from '@/types/skater'
+} from '@/types'
+import type { SkaterData, WeeklyState } from '@/types'
 import type { InstallationData } from '@/services/dataService'
 
 // ─── types ────────────────────────────────────────────────────────────────────
