@@ -119,22 +119,74 @@ export function getMaxJumpDifficulty(program: ProgramData): number {
 
 // ─── runtime validation ───────────────────────────────────────────────────────
 
-/** type guard for complete ProgramData */
-export function validateProgramData(data: unknown): data is ProgramData {
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) return false
-  const d = data as Record<string, unknown>
+import {
+  isFiniteNumber,
+  isInRange,
+  isInteger,
+  isIntegerInRange,
+  isNonNegative,
+  isPlainObject,
+} from '@/utils/validation'
 
-  if (typeof d['id'] !== 'string') return false
-  if (typeof d['skaterId'] !== 'string') return false
-  if (typeof d['temporada'] !== 'number') return false
-  if (typeof d['tipo'] !== 'string') return false
-  if (typeof d['musicaGenero'] !== 'string') return false
-  if (typeof d['musicaTempo'] !== 'string') return false
-  if (typeof d['densidadEmocional'] !== 'number') return false
-  if (!Array.isArray(d['elementos'])) return false
-  if (typeof d['coreografoNivel'] !== 'number') return false
-  if (typeof d['tesProyectado'] !== 'number') return false
-  if (typeof d['pcsProyectado'] !== 'number') return false
+const VALID_PROGRAM_TYPES: ReadonlySet<string> = new Set<ProgramType>(['corto', 'libre'])
+const VALID_MUSICA_TEMPOS: ReadonlySet<string> = new Set<MusicaTempo>(['lento', 'medio', 'rapido'])
+const VALID_ELEMENT_TYPES: ReadonlySet<string> = new Set<ElementType>([
+  'salto', 'giro', 'secuenciaPasos', 'secuenciaCoreografica', 'espiral',
+])
+const VALID_JUMP_TYPES: ReadonlySet<string> = new Set<JumpType>([
+  'axel', 'lutz', 'flip', 'loop', 'salchow', 'toeloop',
+])
+const VALID_ROTACIONES: ReadonlySet<number> = new Set([1, 2, 3, 4])
+
+/** type guard for a single ProgramElement; rejects out-of-range or unknown variants */
+export function validateProgramElement(v: unknown): v is ProgramElement {
+  if (!isPlainObject(v)) return false
+  if (typeof v['tipo'] !== 'string' || !VALID_ELEMENT_TYPES.has(v['tipo'])) return false
+
+  // tipoSalto: required string variant when salto, must be null otherwise
+  if (v['tipo'] === 'salto') {
+    if (typeof v['tipoSalto'] !== 'string' || !VALID_JUMP_TYPES.has(v['tipoSalto'])) return false
+  } else if (v['tipoSalto'] !== null) {
+    return false
+  }
+
+  // dificultadBase 0–15 covers every ISU base value (quad axel ~12.5)
+  if (!isInRange(v['dificultadBase'], 0, 15)) return false
+  if (!isInteger(v['posicionEnPrograma']) || (v['posicionEnPrograma'] as number) < 1) return false
+  if (typeof v['esCombinacion'] !== 'boolean') return false
+
+  // rotaciones: required 1–4 for jumps, must be null otherwise
+  if (v['tipo'] === 'salto') {
+    if (!isInteger(v['rotaciones']) || !VALID_ROTACIONES.has(v['rotaciones'] as number)) return false
+  } else if (v['rotaciones'] !== null) {
+    return false
+  }
+
+  return true
+}
+
+/**
+ * type guard for complete ProgramData.
+ * validates ranges (densidadEmocional 0–1, coreografoNivel 1–5) and recurses
+ * into elementos[] to reject malformed program elements.
+ */
+export function validateProgramData(data: unknown): data is ProgramData {
+  if (!isPlainObject(data)) return false
+
+  if (typeof data['id'] !== 'string') return false
+  if (typeof data['skaterId'] !== 'string') return false
+  if (!isInteger(data['temporada']) || (data['temporada'] as number) < 1) return false
+  if (typeof data['tipo'] !== 'string' || !VALID_PROGRAM_TYPES.has(data['tipo'])) return false
+  if (typeof data['tituloProgramatico'] !== 'string') return false
+  if (typeof data['musicaGenero'] !== 'string') return false
+  if (typeof data['musicaTempo'] !== 'string' || !VALID_MUSICA_TEMPOS.has(data['musicaTempo'])) return false
+  if (!isInRange(data['densidadEmocional'], 0, 1)) return false
+  if (!isIntegerInRange(data['coreografoNivel'], 1, 5)) return false
+  if (!isFiniteNumber(data['tesProyectado']) || !isNonNegative(data['tesProyectado'])) return false
+  if (!isFiniteNumber(data['pcsProyectado']) || !isNonNegative(data['pcsProyectado'])) return false
+
+  if (!Array.isArray(data['elementos'])) return false
+  if (!data['elementos'].every(validateProgramElement)) return false
 
   return true
 }

@@ -394,6 +394,20 @@ Todo dato que entra desde `localStorage`, `fetch('/data/...')` o una llamada a A
 
 Helpers disponibles en `@/utils/validation`: `isFiniteNumber`, `isInRange`, `isIntegerInRange`, `isInteger`, `isNonNegative`, `isPlainObject`, `hasFiniteNumberFields`, `hasUnitScoreFields`, `approximatelyEquals`.
 
+#### D1.1. Validación per-elemento de arrays y records
+
+Reforzado tras la auditoría A2 (mayo 2026). `Array.isArray(x)` y `typeof x === 'object'` **no son validación**: solo confirman la forma del contenedor. La validación real recorre el contenido.
+
+- Para arrays de entidades persistidas, recorrer con `every`: `if (!data['sponsors'].every(validateSponsor)) return false`. Crear el validador per-elemento aunque la entidad solo aparezca anidada (ver `validateSponsor`, `validateRival`, `validateProgramElement`, `validateDialogueLine`).
+- Para records `Record<string, T>`, iterar las claves y validar cada valor (ver `validateNarrativeFlags`).
+- El patrón prohibido es `Array.isArray(x) ? x as T[] : []` — el cast después del `Array.isArray` es exactamente el atajo que D1 veta.
+- Si una entidad ya tiene validador (ej. `validateNarrativeEvent`), **úsalo** dentro del validador del contenedor (`SaveFile.generatedEvents` recorre con `validateNarrativeEvent`). No reinventar.
+- Validadores compuestos (un objeto con varios subarrays) deben validar cada subarray, no solo confirmar que el objeto es plain.
+
+#### D1.2. Tipos compartidos entre features
+
+Cuando dos módulos definen interfaces con el mismo nombre pero forma distinta (caso histórico: `NarrativeEvent` en `@/services/dataService` vs `@/features/narrative/types`), **el validador es la fuente de verdad del tipo**. Importa el tipo desde el mismo barrel que exporta su validador para evitar incompatibilidades silenciosas detectadas solo por `exactOptionalPropertyTypes`.
+
 ### D2. Acceso a storage
 
 Nunca llamar directamente a `localStorage`. Usar siempre `@/utils/safeStorage`. Cualquier código que asuma que el storage está disponible debe consultar `safeStorage.available` primero. Los fallos de storage (Safari privado, cookies bloqueadas, iframe sin acceso) no deben romper el bootstrap: `safeStorage` devuelve `false`/`null` silenciosamente. La UI consulta `useSaveStore.storageAvailable` para mostrar un banner "Modo sin guardado".
