@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
+import { DEFAULT_SKATER_DATA } from '@/types'
 import type { SkaterData } from '@/types'
 import {
   applyBondDecay,
@@ -10,7 +10,7 @@ import {
   rollMutation,
   computeInjuryRisk,
 } from './service'
-import { TRAITS, TraitLayer } from '@/types/skater'
+import { TRAITS, TraitLayer } from '@/types'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
 

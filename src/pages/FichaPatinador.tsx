@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/shallow'
 
 import { useGameStore } from '@/stores/gameStore'
 import { computeTraitVisibilityLayer } from '@/features/athlete'
-import { TRAITS_BY_ID, type SkaterTrait, TraitLayer } from '@/types/skater'
+import { TRAITS_BY_ID, type SkaterTrait, TraitLayer } from '@/types'
 import { AttributeRow, BondMeter } from '@/components/ui'
 import { getAllTraits, type TraitData } from '@/services/dataService'
 

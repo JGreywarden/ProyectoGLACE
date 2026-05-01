@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest'
 
-import { DEFAULT_SEASON_DATA } from '@/types/season'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
+import { DEFAULT_SEASON_DATA } from '@/types'
+import { DEFAULT_SKATER_DATA } from '@/types'
 import type { SkaterData } from '@/types'
 
 import {
@@ -17,7 +17,7 @@ import {
   validateNarrativeEvent,
 } from './service'
 import { validateDecisionHistory } from './validation'
-import type { CompetitionSlot } from '@/types/season'
+import type { CompetitionSlot } from '@/types'
 import type { DecisionRecord, NarrativeContext, NarrativeEvent } from './types'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────

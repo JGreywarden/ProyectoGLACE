@@ -2,9 +2,9 @@
 // exposes Promise-based APIs; fire-and-forget workers that terminate
 // once the result is delivered.
 
-import type { SkaterData } from '@/types/skater'
-import type { ProgramData } from '@/types/program'
-import type { ElementOutcome, ProgramScore } from '@/types/season'
+import type { SkaterData } from '@/types'
+import type { ProgramData } from '@/types'
+import type { ElementOutcome, ProgramScore } from '@/types'
 import type { Judge } from '@/services/dataService'
 import type { CompetitionContextFlags, SimulationResult } from './engine'
 

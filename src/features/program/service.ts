@@ -11,13 +11,13 @@ import {
   computePCS as engineComputePCS,
   type RNG,
 } from '@/features/competition'
-import type { SkaterData } from '@/types/skater'
+import type { SkaterData } from '@/types'
 import type {
   JumpType,
   ProgramData,
   ProgramElement,
   ProgramType,
-} from '@/types/program'
+} from '@/types'
 import type { Judge } from '@/services/dataService'
 import { getMusicLibraryEntry } from '@/services/dataService'
 

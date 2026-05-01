@@ -10,9 +10,9 @@ import {
   type CompetitionContextFlags,
   type SimulationResult,
 } from '@/features/competition/engine'
-import type { SkaterData } from '@/types/skater'
-import type { ProgramData } from '@/types/program'
-import type { ElementOutcome, ProgramScore } from '@/types/season'
+import type { SkaterData } from '@/types'
+import type { ProgramData } from '@/types'
+import type { ElementOutcome, ProgramScore } from '@/types'
 import type { Judge } from '@/services/dataService'
 
 export interface SimulateRequest {

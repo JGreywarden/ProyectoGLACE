@@ -3,9 +3,9 @@ import {
   FATIGUE_BLOCK_THRESHOLD,
   MOTIVATION_SPEED_MULTIPLIER,
 } from '@/lib/balance'
-import type { SkaterData } from '@/types/skater'
-import type { SeasonData, WeekSummary } from '@/types/season'
-import type { InstallationId, InstallationLevel } from '@/types/club'
+import type { SkaterData } from '@/types'
+import type { SeasonData, WeekSummary } from '@/types'
+import type { InstallationId, InstallationLevel } from '@/types'
 import type { ActivityId, Activity, WeekSchedule, TensionId, WeekEffects } from './types'
 
 // ─── activity definitions (GDD cap. 17) ──────────────────────────────────────

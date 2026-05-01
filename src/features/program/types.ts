@@ -1,7 +1,7 @@
 // program designer feature types — extends @/types/program with editor-only data
 // these types do not get persisted as such; ProgramData is the canonical entity.
 
-import type { ProgramData, ProgramElement, ProgramType } from '@/types/program'
+import type { ProgramData, ProgramElement, ProgramType } from '@/types'
 
 // re-export for convenience inside the feature
 export type { ProgramData, ProgramElement, ProgramType }

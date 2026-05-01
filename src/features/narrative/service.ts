@@ -3,9 +3,9 @@
 
 import { rollMutation } from '@/features/athlete'
 import type { SkaterData, TraitId } from '@/types'
-import { getFasePorSemana } from '@/types/season'
-import type { CompetitionSlot } from '@/types/season'
-import { TRAITS_BY_ID } from '@/types/skater'
+import { getFasePorSemana } from '@/types'
+import type { CompetitionSlot } from '@/types'
+import { TRAITS_BY_ID } from '@/types'
 import {
   isFiniteNumber,
   isInRange,

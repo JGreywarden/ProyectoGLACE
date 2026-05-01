@@ -1,7 +1,7 @@
 // rivals service — generation, simulation and progression.
 // pure: rng injectable, no React, no Zustand.
 
-import type { CompetitionType } from '@/types/season'
+import type { CompetitionType } from '@/types'
 import {
   COMPETITION_FIELD_SIZE,
   COMPETITION_TIER_MIN_RIVAL,

@@ -1,4 +1,4 @@
-import type { ElementType, JumpType, ProgramElement } from '@/types/program'
+import type { ElementType, JumpType, ProgramElement } from '@/types'
 import { getJumpBaseValue } from '@/features/program'
 
 interface Props {

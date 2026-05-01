@@ -1,8 +1,8 @@
 // data service — lazy fetch + Map cache for all static game content
 // pure module: no React, no Zustand; call from stores or features directly
 
-import type { FaseSeason } from '@/types/season'
-import type { InstallationId } from '@/types/club'
+import type { FaseSeason } from '@/types'
+import type { InstallationId } from '@/types'
 import traitsRaw from '@/data/traits.json'
 
 // ─── event types ──────────────────────────────────────────────────────────────

@@ -17,12 +17,12 @@ import {
   TRAVEL_COST_BY_COMPETITION_TYPE,
   WEEKLY_EXPENSE_BASE,
 } from '@/lib/balance'
-import { DEFAULT_CLUB_DATA } from '@/types/club'
-import type { ClubData, Sponsor } from '@/types/club'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
-import type { SkaterData } from '@/types/skater'
-import { DEFAULT_SEASON_DATA } from '@/types/season'
-import type { SeasonData, CompetitionResult } from '@/types/season'
+import { DEFAULT_CLUB_DATA } from '@/types'
+import type { ClubData, Sponsor } from '@/types'
+import { DEFAULT_SKATER_DATA } from '@/types'
+import type { SkaterData } from '@/types'
+import { DEFAULT_SEASON_DATA } from '@/types'
+import type { SeasonData, CompetitionResult } from '@/types'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
 

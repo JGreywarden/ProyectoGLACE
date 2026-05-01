@@ -1,4 +1,4 @@
-import type { FaseSeason } from '@/types/season'
+import type { FaseSeason } from '@/types'
 
 interface Props {
   semana:    number

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { calcGain, detectTensions, resolveWeekEffects } from './service'
 import type { ActivityId, WeekSchedule } from './types'
-import type { SkaterData } from '@/types/skater'
-import type { SeasonData, WeekSummary, CompetitionSlot } from '@/types/season'
-import { DEFAULT_SKATER_DATA } from '@/types/skater'
-import { DEFAULT_SEASON_DATA } from '@/types/season'
+import type { SkaterData } from '@/types'
+import type { SeasonData, WeekSummary, CompetitionSlot } from '@/types'
+import { DEFAULT_SKATER_DATA } from '@/types'
+import { DEFAULT_SEASON_DATA } from '@/types'
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
 

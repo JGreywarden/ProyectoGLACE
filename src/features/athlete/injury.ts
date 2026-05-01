@@ -12,7 +12,7 @@ import {
   TECHO_LOSS_RANGE_GRAVE,
   TRAIT_INJURY_MULTIPLIERS,
 } from '@/lib/balance'
-import type { InjuryRecord, InjurySeverity, SkaterData } from '@/types/skater'
+import type { InjuryRecord, InjurySeverity, SkaterData } from '@/types'
 import type { ActivityId, WeekSchedule } from '@/features/training'
 import { ACTIVITY_DEFINITIONS } from '@/features/training'
 

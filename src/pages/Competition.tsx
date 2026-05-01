@@ -15,7 +15,7 @@ import type {
   MomentImpact,
   ProgramScore,
   RankingEntry,
-} from '@/types/season'
+} from '@/types'
 import { MomentOverlay, ScoreCard } from '@/components/ui'
 
 // ─── timing constants (UI cadence) ───────────────────────────────────────────

@@ -1,8 +1,8 @@
 // narrative events + competition Moments — GDD cap. 4 & roadmap Fase 1 Tarea 6
 
 import type { SkaterData } from '@/types'
-import type { FaseSeason, SeasonData } from '@/types/season'
-import type { InjurySeverity } from '@/types/skater'
+import type { FaseSeason, SeasonData } from '@/types'
+import type { InjurySeverity } from '@/types'
 
 // ─── event taxonomy ──────────────────────────────────────────────────────────
 
