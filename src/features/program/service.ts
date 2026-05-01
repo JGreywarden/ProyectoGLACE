@@ -10,7 +10,7 @@ import {
   computeTES as engineComputeTES,
   computePCS as engineComputePCS,
   type RNG,
-} from '@/features/competition/engine'
+} from '@/features/competition'
 import type { SkaterData } from '@/types/skater'
 import type {
   JumpType,

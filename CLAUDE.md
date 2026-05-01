@@ -87,8 +87,9 @@ features/training/
 - `pages/` y `components/` importan de `features/` y `stores/`, nunca al revés.
 - `features/*/service.ts` no importa React.
 - `utils/` no importa de ningún otro módulo del proyecto.
-- Imports entre features: solo a través del `index.ts` del otro feature (nunca imports internos cruzados).
-- El motor de competición corre en `workers/` — `features/competition/` solo le envía mensajes.
+- Imports entre features: solo a través del `index.ts` del otro feature (nunca imports internos cruzados). Si necesitas un símbolo que el barrel no exporta, primero amplía el barrel; nunca acortes la ruta saltándotelo.
+- El motor de competición es un **módulo puro** que vive en `features/competition/engine.ts` (funciones sin estado: `computeTES`, `computePCS`, `simulate*`, `finalizeProgramScore`, …). `workers/competitionWorker.ts` lo ejecuta off-main-thread vía `postMessage`. `features/competition/service.ts` es la API main-thread basada en `Promise` que envuelve el worker. Otras features pueden invocar el engine síncronamente para validación (p.ej. `program/service.ts`); para cálculo en bucle de juego, **siempre vía worker**.
+- Excepción documentada para imports a ruta interna: `workers/<X>Worker.ts` puede importar `features/<X>/engine` (o equivalente) directamente porque worker y engine son la pareja threading↔lógica del mismo motor. Cualquier otro cruce sigue la regla del barrel sin excepciones.
 
 ---
 
