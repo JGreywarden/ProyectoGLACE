@@ -45,7 +45,15 @@ export function profileToSkater(
     name:         profile.nombre,
     age:          profile.edad,
     nationality:  profile.nacionalidad,
-    technical:    { ...profile.nivelVisible },
+    technical: {
+      saltos:           profile.nivelVisible.saltos,
+      giros:            profile.nivelVisible.giros,
+      secuenciaDePasos: profile.nivelVisible.secuenciaDePasos,
+      amplitudLinea:    profile.nivelVisible.amplitudLinea,
+      // GDD pág. 12 — Artística rara vez se revela en scouting; usar
+      // amplitudLinea como cota baja cuando el perfil no la documenta.
+      artistica:        profile.nivelVisible.artistica ?? profile.nivelVisible.amplitudLinea,
+    },
     psychological: { ...DEFAULT_SKATER_DATA.psychological },
     physical: {
       techosBiologico:       ceiling,

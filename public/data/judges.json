@@ -118,5 +118,49 @@
       "tes": 0.2,
       "pcs": { "sk": 0.1, "tr": 0.3, "pe": 0.2, "co": 0.3, "in": 0.4 }
     }
+  },
+  {
+    "id": "judge_tanaka_kenji",
+    "nombre": "Kenji Tanaka",
+    "pais": "JPN",
+    "experiencia": 24,
+    "sesgos": {
+      "tes": 0.05,
+      "pcs": { "sk": 0.0, "tr": 0.1, "pe": 0.15, "co": 0.05, "in": 0.15 }
+    },
+    "medio": "IceTime Magazine"
+  },
+  {
+    "id": "judge_muller_anna",
+    "nombre": "Anna Müller",
+    "pais": "GER",
+    "experiencia": 26,
+    "sesgos": {
+      "tes": -0.05,
+      "pcs": { "sk": 0.0, "tr": -0.05, "pe": -0.05, "co": 0.0, "in": -0.1 },
+      "postFallGoePenalty": 0.88
+    }
+  },
+  {
+    "id": "judge_walsh_sarah",
+    "nombre": "Sarah Walsh",
+    "pais": "USA",
+    "experiencia": 17,
+    "sesgos": {
+      "tes": 0.0,
+      "pcs": { "sk": 0.0, "tr": 0.0, "pe": 0.0, "co": 0.0, "in": 0.0 }
+    }
+  },
+  {
+    "id": "judge_petrov_nikolai",
+    "nombre": "Nikolai Petrov",
+    "pais": "RUS",
+    "experiencia": 31,
+    "sesgos": {
+      "tes": 0.15,
+      "pcs": { "sk": 0.2, "tr": 0.1, "pe": 0.05, "co": 0.0, "in": -0.05 },
+      "nacionalidadBonus": { "pais": "RUS", "bonus": 0.5 }
+    },
+    "medio": "FFKR"
   }
 ]

@@ -90,6 +90,16 @@ export function WeekProcessing() {
         })
         useGameStore.getState().setLastEconomy(result.economyBreakdown, result.pressureState)
 
+        // persist the cohesion / vínculo-musical updates on each program so
+        // they accumulate week after week (consumed by next week's PCS).
+        const programStore = useProgramStore.getState()
+        if (result.programaCortoActualizado) {
+          programStore.updateConfirmedProgram(result.programaCortoActualizado)
+        }
+        if (result.programaLibreActualizado) {
+          programStore.updateConfirmedProgram(result.programaLibreActualizado)
+        }
+
         if (result.competitionResult) {
           useGameStore.getState().changeState(GameState.COMPETITION)
           navigate('/competicion', { replace: true })

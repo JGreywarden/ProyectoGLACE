@@ -55,6 +55,12 @@ interface ProgramState {
 
   /** finds a confirmed program by (skaterId, tipo, temporada) — null when missing */
   getProgram:       (skaterId: string, tipo: ProgramType, temporada: number) => ProgramData | null
+  /**
+   * replaces the matching confirmed program (same skaterId, tipo, temporada).
+   * used by the week pipeline to persist cohesion / vínculo musical updates
+   * after each week without re-confirming the draft.
+   */
+  updateConfirmedProgram: (program: ProgramData) => void
   /** rehydrate from a loaded SaveFile; resets all drafts */
   hydrateConfirmedPrograms: (programs: Record<string, ProgramData[]>) => void
 }
@@ -263,6 +269,24 @@ export const useProgramStore = create<ProgramState>()(
         getProgram: (skaterId, tipo, temporada) => {
           const list = get().confirmedPrograms[skaterId] ?? []
           return list.find(p => p.tipo === tipo && p.temporada === temporada) ?? null
+        },
+
+        updateConfirmedProgram: (program) => {
+          const skaterId = program.skaterId
+          const existing = get().confirmedPrograms[skaterId] ?? []
+          const idx = existing.findIndex(
+            p => p.tipo === program.tipo && p.temporada === program.temporada,
+          )
+          if (idx === -1) return
+          const next = [...existing]
+          next[idx] = program
+          set(
+            (s) => ({
+              confirmedPrograms: { ...s.confirmedPrograms, [skaterId]: next },
+            }),
+            false,
+            'program/updateConfirmedProgram',
+          )
         },
 
         hydrateConfirmedPrograms: (programs) => {

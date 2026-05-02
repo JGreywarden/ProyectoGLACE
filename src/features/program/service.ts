@@ -171,6 +171,8 @@ export function createDefaultProgram(
     densidadEmocional:  0.5,
     elementos,
     coreografoNivel:    1,
+    cohesion:           50,
+    vinculoMusical:     50,
     tesProyectado:      0,
     pcsProyectado:      0,
   }

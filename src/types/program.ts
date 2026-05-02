@@ -70,6 +70,17 @@ export interface ProgramData {
    * for traits like Artista nato and Actor nato.
    */
   coreografoNivel:   1 | 2 | 3 | 4 | 5
+  /**
+   * cohesion built up by Ensayo slots while preparing this program (0–100).
+   * primary driver of PCS Transitions and Composition; decays slowly without rehearsal.
+   */
+  cohesion:          number
+  /**
+   * how deeply this skater inhabits this specific music (0–100).
+   * GDD pág. 12 IN: "Vínculo con la música". built up over weeks of work with the piece.
+   * never confuse with the coach-skater bond (skater.weeklyState.vinculo).
+   */
+  vinculoMusical:    number
   /** projected TES based on current element difficulty and skater attributes */
   tesProyectado: number
   /** projected PCS based on current component scores */
@@ -90,6 +101,8 @@ export const DEFAULT_PROGRAM_DATA: ProgramData = {
   densidadEmocional:  0.5,
   elementos:          [],
   coreografoNivel:    1,
+  cohesion:           50,
+  vinculoMusical:     50,
   tesProyectado:      0,
   pcsProyectado:      0,
 }
@@ -182,6 +195,8 @@ export function validateProgramData(data: unknown): data is ProgramData {
   if (typeof data['musicaTempo'] !== 'string' || !VALID_MUSICA_TEMPOS.has(data['musicaTempo'])) return false
   if (!isInRange(data['densidadEmocional'], 0, 1)) return false
   if (!isIntegerInRange(data['coreografoNivel'], 1, 5)) return false
+  if (!isInRange(data['cohesion'], 0, 100)) return false
+  if (!isInRange(data['vinculoMusical'], 0, 100)) return false
   if (!isFiniteNumber(data['tesProyectado']) || !isNonNegative(data['tesProyectado'])) return false
   if (!isFiniteNumber(data['pcsProyectado']) || !isNonNegative(data['pcsProyectado'])) return false
 
