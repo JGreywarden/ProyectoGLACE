@@ -89,6 +89,17 @@ export interface JudgePCSBias {
   in?: number  // Interpretation
 }
 
+/**
+ * country-conditional GOE bonus.
+ * GDD pág. 13 example — Petrov, pro-escuela rusa: +0.3 a +0.8 GOE para skaters de RUS.
+ */
+export interface JudgeNationalityBonus {
+  /** ISO 3166-1 alpha-3 country code matched against skater.nationality */
+  pais:  string
+  /** added directly to this judge's GOE for any element when the skater matches */
+  bonus: number
+}
+
 export interface Judge {
   id:          string
   nombre:      string
@@ -96,11 +107,23 @@ export interface Judge {
   /** years active as ISU technical specialist or judge */
   experiencia: number
   sesgos: {
-    /** general TES generosity; positive = grades elements higher */
+    /** general TES generosity added to this judge's GOE per element; positive = grades higher */
     tes?: number
     /** per-component PCS bias; positive = generous, negative = strict */
     pcs?: JudgePCSBias
+    /**
+     * GDD pág. 13 example — Anna Müller: factor < 1 dampens this judge's GOE on every
+     * element AFTER the program's first fall. 1.0 (or undefined) = no extra penalty.
+     */
+    postFallGoePenalty?: number
+    /** country-conditional GOE bonus (e.g. pro-escuela patterns from the GDD) */
+    nacionalidadBonus?: JudgeNationalityBonus
   }
+  /**
+   * media outlet this judge is publicly associated with — used by the panel selector
+   * and (later) by narrative events. purely descriptive; not consumed by the engine.
+   */
+  medio?: string
 }
 
 // ─── trait types ──────────────────────────────────────────────────────────────
@@ -193,6 +216,11 @@ export interface SkaterProfile {
     giros:            number
     secuenciaDePasos: number
     amplitudLinea:    number
+    /**
+     * Artistic ability — optional in scouting because pre-contract observation
+     * rarely reveals it cleanly. Defaults to amplitudLinea when missing.
+     */
+    artistica?:       number
   }
   potencial:          'bajo' | 'medio' | 'alto' | 'excepcional'
   rasgosVisibles:     string[]
@@ -321,15 +349,42 @@ export function hydrateGeneratedEvents(events: NarrativeEvent[]): void {
 }
 
 /**
- * assembles a 9-judge ISU panel for the given competition.
- * the same competitionId always produces the same panel (deterministic seed).
+ * assembles a panel of judges for the given competition.
+ *
+ * - Deterministic by competitionId so reload + replay produces the same panel.
+ * - At least `minSeniors` judges with experiencia ≥ 20 are guaranteed when the
+ *   pool can satisfy it. This honours the GDD intent: high-prestige events keep
+ *   marquee figures (Tanaka, Müller, Walsh, Petrov, …) more frequently while
+ *   the rest of the panel rotates between competitions.
+ * - The total panel size defaults to 7 (matches the ISU trimming convention
+ *   used by `trimmedMean` in the engine).
  */
-export async function getJudgePanel(competitionId: string): Promise<Judge[]> {
+export async function getJudgePanel(
+  competitionId: string,
+  panelSize = 7,
+  minSeniors = 2,
+): Promise<Judge[]> {
   const judges = await load<Judge>('/data/judges.json')
+  if (judges.length === 0) return []
   const seed = strHash(competitionId)
-  return [...judges]
-    .sort((a, b) => (strHash(a.id + seed) >>> 0) - (strHash(b.id + seed) >>> 0))
-    .slice(0, 9)
+  const shuffled = [...judges]
+    .map(j => ({ j, key: strHash(j.id + seed) >>> 0 }))
+    .sort((a, b) => a.key - b.key)
+    .map(x => x.j)
+
+  const seniors = shuffled.filter(j => j.experiencia >= 20)
+  const juniors = shuffled.filter(j => j.experiencia < 20)
+
+  const panel: Judge[] = []
+  // ensure the requested minimum of seniors when available
+  for (const j of seniors.slice(0, Math.min(minSeniors, panelSize))) panel.push(j)
+  // then fill the rest in deterministic-shuffle order, skipping ones already picked
+  for (const j of [...seniors.slice(panel.length), ...juniors]) {
+    if (panel.length >= panelSize) break
+    if (panel.includes(j)) continue
+    panel.push(j)
+  }
+  return panel.slice(0, panelSize)
 }
 
 // traits live as a compile-time JSON import: needed synchronously by athlete

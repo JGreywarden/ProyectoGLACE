@@ -3,11 +3,11 @@
 
 import {
   AXEL_GOE_MULTIPLIER,
+  DEFAULT_POST_FALL_GOE_PENALTY,
   ELEMENT_GOE_TES_FACTOR,
   FALL_DEDUCTION,
   FALL_GOE_THRESHOLD,
   FATIGUE_BLOCK_THRESHOLD,
-  FIRST_FALL_GOE_PENALTY,
   GOE_RANGE,
   GOE_WEIGHTS,
   INVALIDATION_THRESHOLD,
@@ -91,25 +91,20 @@ function isInvalidated(el: ProgramElement, goe: number): boolean {
   return el.tipo === 'salto' && goe <= INVALIDATION_THRESHOLD
 }
 
-// ─── GOE ──────────────────────────────────────────────────────────────────────
+// ─── GOE base (panel-independent) ─────────────────────────────────────────────
 
 /**
- * GOE per element — GDD cap. 5.
+ * baseline GOE before judge influence. depends only on skater + element + flags.
+ * GDD cap. 5: f(Atributos técnicos, Fatiga acumulada, Posición en programa,
+ * Presión competitiva, Varianza[Resistencia mental]).
  *
- * goe = base(technical attrs) + fatiguePenalty + positionDecay + pressureMod + gaussian(sigma)
- *
- * base: technical mix (saltos/giros/pasos) normalised 0–10 then recentred to -5..+5.
- * fatigue: only penalises above FATIGUE_BLOCK_THRESHOLD.
- * position: later elements lose GOE (0-indexed).
- * pressure: normalised presionCompetitiva (-1..+1) scaled by pressureWeight.
- * axel jumps: multiply final GOE by AXEL_GOE_MULTIPLIER.
- * first fall: downstream elements multiplied by FIRST_FALL_GOE_PENALTY.
+ * does NOT clamp to [-5, +5]: the clamp happens after each judge's bias is
+ * applied (see applyJudgeAdjustment).
  */
-export function computeGOE(
+export function computeBaseGOE(
   skater: SkaterData,
   element: ProgramElement,
-  contextFlags: CompetitionContextFlags,
-  rng: RNG = Math.random,
+  rng: RNG,
 ): number {
   const t = skater.technical
   const p = skater.psychological
@@ -137,11 +132,73 @@ export function computeGOE(
     goe *= AXEL_GOE_MULTIPLIER
   }
 
-  if (contextFlags.firstFallTriggered) {
-    goe *= FIRST_FALL_GOE_PENALTY
-  }
+  return goe
+}
 
+/**
+ * applies one judge's personality to the base GOE for a given element:
+ * - own postFallGoePenalty when the program already saw a fall (Anna Müller)
+ * - own nacionalidadBonus if the skater matches (Petrov)
+ * - own sesgos.tes added directly to the GOE
+ * the result is clamped to [-5, +5].
+ */
+function applyJudgeAdjustment(
+  baseGOE: number,
+  judge: Judge,
+  contextFlags: CompetitionContextFlags,
+  skater: SkaterData,
+): number {
+  let goe = baseGOE
+  if (contextFlags.firstFallTriggered) {
+    // every judge penalises elements after a fall — that's intrinsic to ISU.
+    // we model it as a flat subtraction so it also bites when GOE is already
+    // negative (multiplying a negative by 0.7 would *reduce* severity).
+    // judges without an override use the baseline (0.94 → -0.3 GOE);
+    // anti-caídas judges (Anna Müller 0.88 → -0.6 GOE) override it with a
+    // smaller factor for a steeper subtraction.
+    const penalty = judge.sesgos.postFallGoePenalty ?? DEFAULT_POST_FALL_GOE_PENALTY
+    goe -= (1 - penalty) * 5
+  }
+  const nat = judge.sesgos.nacionalidadBonus
+  if (nat && nat.pais === skater.nationality) {
+    goe += nat.bonus
+  }
+  goe += judge.sesgos.tes ?? 0
   return clamp(goe, GOE_RANGE.min, GOE_RANGE.max)
+}
+
+/**
+ * panel-aware final GOE for one element. trimmed mean of per-judge adjustments.
+ * with no judges, falls back to clamping the base value.
+ */
+export function computePanelGOE(
+  baseGOE: number,
+  contextFlags: CompetitionContextFlags,
+  skater: SkaterData,
+  judges: readonly Judge[],
+): number {
+  if (judges.length === 0) {
+    return clamp(baseGOE, GOE_RANGE.min, GOE_RANGE.max)
+  }
+  const judgeGoes = judges.map(j => applyJudgeAdjustment(baseGOE, j, contextFlags, skater))
+  return trimmedMean(judgeGoes)
+}
+
+// ─── public GOE wrapper (kept for legacy call-sites and tests) ───────────────
+
+/**
+ * convenience wrapper: base GOE without judge influence, clamped to [-5, +5].
+ * the worker uses computePanelGOE directly so judges can apply their personality.
+ */
+export function computeGOE(
+  skater: SkaterData,
+  element: ProgramElement,
+  contextFlags: CompetitionContextFlags,
+  rng: RNG,
+  judges: readonly Judge[] = [],
+): number {
+  const base = computeBaseGOE(skater, element, rng)
+  return computePanelGOE(base, contextFlags, skater, judges)
 }
 
 // ─── TES ──────────────────────────────────────────────────────────────────────
@@ -164,9 +221,10 @@ export function computeTES(
   program: ProgramData,
   skater: SkaterData,
   contextFlags: CompetitionContextFlags,
-  rng: RNG = Math.random,
+  rng: RNG,
+  judges: readonly Judge[] = [],
 ): TESResult {
-  const elements = simulateProgramElements(program, skater, contextFlags, rng)
+  const elements = simulateProgramElements(program, skater, contextFlags, rng, judges)
   let tes = 0
   let caidas = 0
   let deducciones = 0
@@ -184,22 +242,26 @@ export function computeTES(
 
 /**
  * runs the program element-by-element and exposes each ElementOutcome so the UI
- * can reveal them progressively. Each ElementOutcome holds the raw GOE plus
- * the derived flags (caida, invalid) and bookkeeping (tesBruto, deduccion).
+ * can reveal them progressively. Each ElementOutcome holds the panel-trimmed GOE
+ * plus the derived flags (caida, invalid) and bookkeeping (tesBruto, deduccion).
  *
  * Pure: the contextFlags argument is cloned; callers may reuse their object.
+ * judges is optional; without judges, the GOE collapses to the clamped base value
+ * (used by the program-designer projection in features/program/service.ts).
  */
 export function simulateProgramElements(
   program: ProgramData,
   skater: SkaterData,
-  contextFlags: CompetitionContextFlags = {},
-  rng: RNG = Math.random,
+  contextFlags: CompetitionContextFlags,
+  rng: RNG,
+  judges: readonly Judge[] = [],
 ): ElementOutcome[] {
   const localFlags: CompetitionContextFlags = { ...contextFlags }
   const out: ElementOutcome[] = []
 
   for (const element of program.elementos) {
-    const goe = computeGOE(skater, element, localFlags, rng)
+    const baseGOE = computeBaseGOE(skater, element, rng)
+    const goe = computePanelGOE(baseGOE, localFlags, skater, judges)
     const caida = isFall(element, goe)
     const invalid = isInvalidated(element, goe)
     const tesBruto = invalid ? 0 : computeTESElement(element, goe)
@@ -212,7 +274,19 @@ export function simulateProgramElements(
 
 // ─── PCS ──────────────────────────────────────────────────────────────────────
 
-/** raw component score in 0–10 scale from skater + program + one judge. */
+/**
+ * raw component score in 0–10 scale from skater + program + one judge.
+ * GDD pág. 12 mapping (with realistic figure-skating sources):
+ *
+ *   SK Skating Skills    ← Amplitud/Línea, Sec. pasos, Físico (≡ 100 - fatiga)
+ *   TR Transitions       ← Sec. pasos, Artística, Cohesión del programa
+ *   PE Performance       ← Artística, Confianza, Presión competitiva
+ *   CO Composition       ← Diseño (densidad), Cohesión, Coreógrafo
+ *   IN Interpretation    ← Artística, Vínculo con la música, Rasgos / Motivación
+ *
+ * note: `vinculo` (coach-skater bond) is intentionally NOT used here. IN consumes
+ * `program.vinculoMusical`, which is the bond between this skater and this music.
+ */
 export function computePCSComponent(
   component: PCSComponentKey,
   skater: SkaterData,
@@ -224,30 +298,31 @@ export function computePCSComponent(
   const ws = skater.weeklyState
   const densidad = program.densidadEmocional * 100
   const coreografo = program.coreografoNivel * 20
+  const fisico = clamp(100 - ws.fatigaAcumulada, 0, 100)
 
   let raw: number
   switch (component) {
     case 'sk':
-      // skating skills: line + step quality + a touch of the jump skeleton
-      raw = 0.5 * t.amplitudLinea + 0.3 * t.secuenciaDePasos + 0.2 * t.saltos
+      // skating skills: amplitud + steps + condición física en el momento
+      raw = 0.45 * t.amplitudLinea + 0.30 * t.secuenciaDePasos + 0.25 * fisico
       break
     case 'tr':
-      // transitions: step sequence + line, small bonus for dense programs
-      raw = 0.5 * t.secuenciaDePasos + 0.4 * t.amplitudLinea + 0.1 * densidad
+      // transitions: steps + artística + cohesión construida en Ensayo
+      raw = 0.40 * t.secuenciaDePasos + 0.35 * t.artistica + 0.25 * program.cohesion
       break
     case 'pe': {
-      // performance: line + confidence + signed presionCompetitiva recentred to 0–100
+      // performance: artística + confianza + presión competitiva centrada
       const presionCentrada = 50 + psy.presionCompetitiva / 2
-      raw = 0.4 * t.amplitudLinea + 0.3 * psy.confianza + 0.3 * presionCentrada
+      raw = 0.40 * t.artistica + 0.35 * psy.confianza + 0.25 * presionCentrada
       break
     }
     case 'co':
-      // composition: program design (densidad + coreógrafo) + line as vehicle
-      raw = 0.3 * densidad + 0.4 * coreografo + 0.3 * t.amplitudLinea
+      // composition: diseño musical + cohesión + nivel del coreógrafo
+      raw = 0.30 * densidad + 0.35 * program.cohesion + 0.35 * coreografo
       break
     case 'in':
-      // interpretation: density + line + bond with the coach + motivation
-      raw = 0.3 * densidad + 0.3 * t.amplitudLinea + 0.2 * ws.vinculo + 0.2 * psy.motivacionIntrinseca
+      // interpretation: artística + vínculo con la música + motivación intrínseca
+      raw = 0.45 * t.artistica + 0.30 * program.vinculoMusical + 0.25 * psy.motivacionIntrinseca
       break
   }
 
@@ -338,7 +413,8 @@ export function finalizeProgramScore(
  * goeBonusRemaining. when causesFall is true, the element at fromIndex is
  * forced to a fall (clamps GOE to FALL_GOE_THRESHOLD) and the standard
  * "first fall" penalty propagates to subsequent elements unless one already
- * fell earlier in the program.
+ * fell earlier in the program. In this fast path we use DEFAULT_POST_FALL_GOE_PENALTY
+ * (panel average) since we don't re-resolve the panel here.
  *
  * Pure: returns a new array; never mutates the input.
  */
@@ -367,7 +443,7 @@ export function applyMomentToElements(
     }
     // propagate first-fall penalty when this Moment causes the program's first fall
     if (causesFall && i > idx && !earlierFall) {
-      goe *= FIRST_FALL_GOE_PENALTY
+      goe *= DEFAULT_POST_FALL_GOE_PENALTY
     }
     goe = clamp(goe, GOE_RANGE.min, GOE_RANGE.max)
     const caida = isFall(cur.element, goe)
@@ -433,10 +509,10 @@ export function simulate(
   skater: SkaterData,
   program: ProgramData,
   judges: readonly Judge[],
-  contextFlags: CompetitionContextFlags = {},
-  rng: RNG = Math.random,
+  contextFlags: CompetitionContextFlags,
+  rng: RNG,
 ): SimulationResult {
-  const elements = simulateProgramElements(program, skater, contextFlags, rng)
+  const elements = simulateProgramElements(program, skater, contextFlags, rng, judges)
   const score = finalizeProgramScore(elements, skater, program, judges)
   return {
     tes:         score.tes,

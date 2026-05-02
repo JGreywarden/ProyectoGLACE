@@ -44,11 +44,13 @@ interface SkaterOverrides {
   psychological?: Partial<PsychologicalAttributes>
   physical?:      Partial<PhysicalPermanentAttributes>
   weeklyState?:   Partial<WeeklyState>
+  nationality?:   string
 }
 
 function makeSkater(overrides: SkaterOverrides = {}): SkaterData {
   return {
     ...DEFAULT_SKATER_DATA,
+    nationality:   overrides.nationality ?? DEFAULT_SKATER_DATA.nationality,
     technical:     { ...DEFAULT_SKATER_DATA.technical,     ...overrides.technical },
     psychological: { ...DEFAULT_SKATER_DATA.psychological, ...overrides.psychological },
     physical:      { ...DEFAULT_SKATER_DATA.physical,      ...overrides.physical },
@@ -199,9 +201,9 @@ describe('applyJudgeBias', () => {
 // ─── simulate sanity check ───────────────────────────────────────────────────
 
 describe('simulate', () => {
-  it('produces a total in [150, 220] for attrs≈70, 8 elements base 5.0, 7 neutral judges', () => {
+  it('produces a mid-tier total in [70, 120] for attrs≈70, 8 elements base 5.0, 7 neutral judges', () => {
     const skater = makeSkater({
-      technical: { saltos: 70, giros: 70, secuenciaDePasos: 70, amplitudLinea: 70 },
+      technical: { saltos: 70, giros: 70, secuenciaDePasos: 70, amplitudLinea: 70, artistica: 70 },
       psychological: {
         confianza:            70,
         resistenciaMental:    70,
@@ -235,8 +237,47 @@ describe('simulate', () => {
     const rng = mulberry32(12345)
 
     const result = simulate(skater, program, judges, {}, rng)
-    expect(result.total).toBeGreaterThanOrEqual(150)
-    expect(result.total).toBeLessThanOrEqual(220)
+    expect(result.total).toBeGreaterThanOrEqual(70)
+    expect(result.total).toBeLessThanOrEqual(120)
+  })
+
+  it('produces an Olympic-tier FS total in [110, 160] for attrs≈90, elite program (cohesion 85, vínculo musical 80, coreógrafo 4)', () => {
+    const skater = makeSkater({
+      technical:     { saltos: 90, giros: 90, secuenciaDePasos: 90, amplitudLinea: 90, artistica: 90 },
+      psychological: {
+        confianza: 85, resistenciaMental: 85, presionCompetitiva: 0,
+        motivacionIntrinseca: 85, autoexigencia: 80,
+      },
+      weeklyState:   { vinculo: 80, fatigaAcumulada: 20, estres: 25, semanasEntrenadas: 25, currentInjury: null },
+    })
+    // 7 jumps (~5.5 avg) + 3 spins (3.0) + 1 step + 1 choreo — closer to a real elite FS budget
+    const elementos: ProgramElement[] = [
+      { tipo: 'salto', tipoSalto: 'lutz',    dificultadBase: 5.9, posicionEnPrograma: 1,  esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'flip',    dificultadBase: 5.3, posicionEnPrograma: 2,  esCombinacion: true,  rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'loop',    dificultadBase: 4.9, posicionEnPrograma: 3,  esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'salchow', dificultadBase: 4.3, posicionEnPrograma: 4,  esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 5,  esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'lutz',    dificultadBase: 5.9, posicionEnPrograma: 6,  esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'flip',    dificultadBase: 5.3, posicionEnPrograma: 7,  esCombinacion: false, rotaciones: 3 },
+      { tipo: 'giro',          tipoSalto: null, dificultadBase: 3.0, posicionEnPrograma: 8,  esCombinacion: false, rotaciones: null },
+      { tipo: 'giro',          tipoSalto: null, dificultadBase: 3.0, posicionEnPrograma: 9,  esCombinacion: false, rotaciones: null },
+      { tipo: 'giro',          tipoSalto: null, dificultadBase: 3.0, posicionEnPrograma: 10, esCombinacion: false, rotaciones: null },
+      { tipo: 'secuenciaPasos',         tipoSalto: null, dificultadBase: 3.3, posicionEnPrograma: 11, esCombinacion: false, rotaciones: null },
+      { tipo: 'secuenciaCoreografica',  tipoSalto: null, dificultadBase: 3.0, posicionEnPrograma: 12, esCombinacion: false, rotaciones: null },
+    ]
+    const program: ProgramData = {
+      ...DEFAULT_PROGRAM_DATA,
+      tipo:               'libre',
+      elementos,
+      coreografoNivel:    4,
+      densidadEmocional:  0.7,
+      cohesion:           85,
+      vinculoMusical:     80,
+    }
+    const judges = makeNeutralJudges(7)
+    const result = simulate(skater, program, judges, {}, mulberry32(98765))
+    expect(result.total).toBeGreaterThanOrEqual(110)
+    expect(result.total).toBeLessThanOrEqual(160)
   })
 })
 
@@ -454,6 +495,131 @@ describe('applyMomentToElements', () => {
       varianzaMultiplier: 1, bondDelta: 0, causesFall: false, flagsPatch: {},
     }, 0, false)
     expect(JSON.stringify(elements)).toBe(before)
+  })
+})
+
+// ─── per-judge biases (M1, M2 hardening) ─────────────────────────────────────
+
+describe('per-judge TES bias (M1)', () => {
+  it('judges with positive tes bias produce a higher total than neutral judges', () => {
+    const skater = makeSkater({
+      technical: { saltos: 70, giros: 70, secuenciaDePasos: 70, amplitudLinea: 70, artistica: 70 },
+      psychological: { presionCompetitiva: 0 },
+    })
+    const elementos: ProgramElement[] = Array.from({ length: 6 }, (_, i) => ({
+      tipo:               'salto',
+      tipoSalto:          'toeloop',
+      dificultadBase:     5.0,
+      posicionEnPrograma: i + 1,
+      esCombinacion:      false,
+      rotaciones:         3,
+    }))
+    const program: ProgramData = { ...DEFAULT_PROGRAM_DATA, tipo: 'libre', elementos }
+    const generous: Judge[] = Array.from({ length: 7 }, (_, i) => ({
+      id: `g${i}`, nombre: `G${i}`, pais: 'NEU', experiencia: 10,
+      sesgos: { tes: 0.5 },
+    }))
+    const neutral = makeNeutralJudges(7)
+    const seed = 42
+    const a = simulate(skater, program, neutral,  {}, mulberry32(seed))
+    const b = simulate(skater, program, generous, {}, mulberry32(seed))
+    expect(b.tes).toBeGreaterThan(a.tes)
+  })
+})
+
+describe('post-fall penalty (M2)', () => {
+  // every ISU judge penalises post-fall elements — Anna Müller-style severity is on top
+  const skater = makeSkater({
+    technical: { saltos: 60, giros: 60, secuenciaDePasos: 60, amplitudLinea: 60, artistica: 60 },
+    psychological: { resistenciaMental: 80, presionCompetitiva: 0 },
+  })
+  const elementos: ProgramElement[] = [
+    { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 1, esCombinacion: false, rotaciones: 3 },
+    { tipo: 'salto', tipoSalto: 'flip',    dificultadBase: 5.3, posicionEnPrograma: 2, esCombinacion: false, rotaciones: 3 },
+    { tipo: 'salto', tipoSalto: 'lutz',    dificultadBase: 5.9, posicionEnPrograma: 3, esCombinacion: false, rotaciones: 3 },
+  ]
+  const program: ProgramData = { ...DEFAULT_PROGRAM_DATA, tipo: 'libre', elementos }
+
+  const baseline: Judge[] = Array.from({ length: 7 }, (_, i) => ({
+    id: `b${i}`, nombre: `B${i}`, pais: 'NEU', experiencia: 10, sesgos: {},
+  }))
+  const muller: Judge[] = Array.from({ length: 7 }, (_, i) => ({
+    id: `m${i}`, nombre: `M${i}`, pais: 'NEU', experiencia: 10,
+    sesgos: { postFallGoePenalty: 0.7 },
+  }))
+
+  it('baseline judges already penalise after a fall (no override needed)', () => {
+    const noFall = simulateProgramElements(program, skater, { firstFallTriggered: false }, mulberry32(7), baseline)
+    const afterFall = simulateProgramElements(program, skater, { firstFallTriggered: true },  mulberry32(7), baseline)
+    expect(afterFall[1].goe).toBeLessThan(noFall[1].goe)
+    expect(afterFall[2].goe).toBeLessThan(noFall[2].goe)
+  })
+
+  it('Müller-style severity drags GOE further down than the baseline', () => {
+    const baselineRun = simulateProgramElements(program, skater, { firstFallTriggered: true }, mulberry32(7), baseline)
+    const mullerRun   = simulateProgramElements(program, skater, { firstFallTriggered: true }, mulberry32(7), muller)
+    expect(mullerRun[1].goe).toBeLessThan(baselineRun[1].goe)
+    expect(mullerRun[2].goe).toBeLessThan(baselineRun[2].goe)
+  })
+})
+
+describe('per-judge nationality bonus (Petrov-style)', () => {
+  it('boosts GOE only for skaters whose nationality matches', () => {
+    const ruskater = makeSkater({
+      nationality: 'RUS',
+      technical: { saltos: 60, giros: 60, secuenciaDePasos: 60, amplitudLinea: 60, artistica: 60 },
+    })
+    const jpkater = makeSkater({
+      nationality: 'JPN',
+      technical: { saltos: 60, giros: 60, secuenciaDePasos: 60, amplitudLinea: 60, artistica: 60 },
+    })
+    const elem: ProgramElement = makeJumpElement()
+    const proRus: Judge[] = Array.from({ length: 7 }, (_, i) => ({
+      id: `p${i}`, nombre: `P${i}`, pais: 'NEU', experiencia: 10,
+      sesgos: { nacionalidadBonus: { pais: 'RUS', bonus: 0.5 } },
+    }))
+    const goeRus = computeGOE(ruskater, elem, {}, noiseless, proRus)
+    const goeJp  = computeGOE(jpkater,  elem, {}, noiseless, proRus)
+    expect(goeRus).toBeGreaterThan(goeJp)
+  })
+})
+
+// ─── full-pipeline determinism (m2 hardening) ─────────────────────────────────
+
+describe('full simulate determinism (m2)', () => {
+  it('two simulate runs with the same seed produce bit-identical fields', () => {
+    const skater = makeSkater({
+      technical: { saltos: 75, giros: 70, secuenciaDePasos: 65, amplitudLinea: 70, artistica: 70 },
+      psychological: { resistenciaMental: 60, presionCompetitiva: 10 },
+    })
+    const elementos: ProgramElement[] = [
+      { tipo: 'salto', tipoSalto: 'toeloop', dificultadBase: 4.2, posicionEnPrograma: 1, esCombinacion: false, rotaciones: 3 },
+      { tipo: 'giro',  tipoSalto: null,     dificultadBase: 3.0, posicionEnPrograma: 2, esCombinacion: false, rotaciones: null },
+      { tipo: 'salto', tipoSalto: 'flip',   dificultadBase: 5.3, posicionEnPrograma: 3, esCombinacion: false, rotaciones: 3 },
+      { tipo: 'salto', tipoSalto: 'lutz',   dificultadBase: 5.9, posicionEnPrograma: 4, esCombinacion: true,  rotaciones: 3 },
+      { tipo: 'secuenciaPasos', tipoSalto: null, dificultadBase: 3.3, posicionEnPrograma: 5, esCombinacion: false, rotaciones: null },
+    ]
+    const program: ProgramData = { ...DEFAULT_PROGRAM_DATA, tipo: 'libre', elementos }
+    const judges: Judge[] = [
+      { id: 'a', nombre: 'A', pais: 'AAA', experiencia: 12, sesgos: { tes:  0.20, pcs: { sk: 0.1, tr: 0.0, pe: 0.2, co: 0.1, in: 0.1 } } },
+      { id: 'b', nombre: 'B', pais: 'BBB', experiencia: 18, sesgos: { tes: -0.15, pcs: { sk: 0.0, tr: 0.1, pe: -0.1, co: 0.0, in: 0.0 }, postFallGoePenalty: 0.9 } },
+      { id: 'c', nombre: 'C', pais: 'CCC', experiencia: 22, sesgos: { tes:  0.05, pcs: { sk: 0.0, tr: 0.0, pe: 0.0, co: 0.0, in: 0.05 } } },
+      { id: 'd', nombre: 'D', pais: 'DDD', experiencia: 28, sesgos: { } },
+      { id: 'e', nombre: 'E', pais: 'EEE', experiencia:  9, sesgos: { tes:  0.10 } },
+      { id: 'f', nombre: 'F', pais: 'FFF', experiencia: 15, sesgos: { tes: -0.05 } },
+      { id: 'g', nombre: 'G', pais: 'GGG', experiencia: 25, sesgos: { } },
+    ]
+    const seed = 31415
+    const a = simulate(skater, program, judges, {}, mulberry32(seed))
+    const b = simulate(skater, program, judges, {}, mulberry32(seed))
+    expect(b.tes).toBe(a.tes)
+    expect(b.pcs).toBe(a.pcs)
+    expect(b.total).toBe(a.total)
+    expect(b.deducciones).toBe(a.deducciones)
+    expect(b.caidas).toBe(a.caidas)
+    for (const k of ['sk', 'tr', 'pe', 'co', 'in'] as const) {
+      expect(b.pcsDetalle[k]).toBe(a.pcsDetalle[k])
+    }
   })
 })
 

@@ -110,6 +110,10 @@ export interface WeekResult {
   competitionSkippedByInjury: boolean
   /** detailed cash-flow breakdown for the week, including any competition lines */
   economyBreakdown:     CashFlowBreakdown
+  /** SP program after applying cohesion and vínculo-musical updates from training; null when no SP exists */
+  programaCortoActualizado: ProgramData | null
+  /** FS program after applying cohesion and vínculo-musical updates from training; null when no FS exists */
+  programaLibreActualizado: ProgramData | null
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -169,6 +173,23 @@ function cloneClub(c: ClubData): ClubData {
     instalaciones: c.instalaciones.map(i => ({ ...i })),
     sponsors:      c.sponsors.map(sp => ({ ...sp, metricasExigidas: { ...sp.metricasExigidas } })),
     reputacion:    { ...c.reputacion },
+  }
+}
+
+/**
+ * applies the weekly cohesion and vínculo-musical deltas to a program (both
+ * clamped 0–100). the program is otherwise untouched. returns a new object so
+ * the caller can persist it without mutating any in-flight state.
+ */
+function applyProgramWeeklyDeltas(
+  program: ProgramData,
+  cohesionDelta: number,
+  vinculoMusicalDelta: number,
+): ProgramData {
+  return {
+    ...program,
+    cohesion:       clamp(program.cohesion       + cohesionDelta),
+    vinculoMusical: clamp(program.vinculoMusical + vinculoMusicalDelta),
   }
 }
 
@@ -390,7 +411,7 @@ export async function runWeek(
     ? maskInjuredSchedule(ctx.schedule, activeInjury.severity)
     : ctx.schedule
 
-  // 2. training effects (includes tensionsTriggered + eventSeeds)
+  // 2. training effects (includes tensionsTriggered + eventSeeds + cohesionDelta)
   const installationLevels = installationLevelRecord(club)
   const effects = resolveWeekEffects(
     effectiveSchedule,
@@ -399,6 +420,20 @@ export async function runWeek(
     installationLevels,
     rng,
   )
+
+  // 2b. derive vinculoMusical bump: cada ranura ensayo aporta más; dialogo poco.
+  // tope semanal moderado para que la curva sea progresiva (semanas, no semanas y media)
+  const ensayoCount  = effectiveSchedule.slots.filter(s => s.activityId === 'ensayo').length
+  const dialogoCount = effectiveSchedule.slots.filter(s => s.activityId === 'dialogo').length
+  const vinculoMusicalDelta = Math.min(6, ensayoCount * 2 + dialogoCount)
+
+  // apply program deltas; both SP and FS share the same training week input
+  const programaCortoActualizado = ctx.programCorto
+    ? applyProgramWeeklyDeltas(ctx.programCorto, effects.cohesionDelta, vinculoMusicalDelta)
+    : null
+  const programaLibreActualizado = (ctx.programLibre ?? ctx.program)
+    ? applyProgramWeeklyDeltas(ctx.programLibre ?? ctx.program!, effects.cohesionDelta, vinculoMusicalDelta)
+    : null
 
   // 3. apply training effects to skater (clamp before commit)
   skater = applyAttributeGains(skater, effects.attributeGains, 100)
@@ -460,10 +495,12 @@ export async function runWeek(
   void weeklyCtx
   const triggeredEvent = null as NarrativeEvent | null
 
-  // 8. competition (only when IS a competition week)
+  // 8. competition (only when IS a competition week) — usar programas
+  // ya actualizados con la cohesión y vínculo musical de esta semana
   let competitionResult: CompetitionResult | null = null
   let competitionSkippedByInjury = false
-  const programLibre = ctx.programLibre ?? ctx.program
+  const programLibre = programaLibreActualizado
+  const programCortoForComp = programaCortoActualizado
   const skaterCurrentInjury = skater.weeklyState.currentInjury
   const cantCompete = skaterCurrentInjury?.severity === 'grave'
   if (competitionSlot && programLibre && cantCompete) {
@@ -472,7 +509,7 @@ export async function runWeek(
   } else if (competitionSlot && programLibre) {
     const pipelineRes = await runCompetitionPipeline(
       skater,
-      ctx.programCorto ?? null,
+      programCortoForComp,
       programLibre,
       ctx.competitionJudges ?? ctx.allJudges,
       competitionSlot,
@@ -596,6 +633,8 @@ export async function runWeek(
     recoveredFromSeverity,
     competitionSkippedByInjury,
     economyBreakdown,
+    programaCortoActualizado,
+    programaLibreActualizado,
   }
 }
 

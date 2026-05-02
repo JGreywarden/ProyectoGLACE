@@ -1,8 +1,6 @@
 // balance.ts — todas las constantes numéricas del juego derivadas del GDD
 // los services consumen estas constantes; nunca números mágicos en el dominio
 
-import type { AttributeKey } from '@/types'
-
 // ─── 1. Progresión de atributos ───────────────────────────────────────────────
 
 // GDD cap. 17 — ganancia base por sesión antes de aplicar modificadores
@@ -126,13 +124,14 @@ export const GOE_RANGE = { min: -5, max: 5 } as const
 
 // GDD cap. 5 — pesos de cada factor sobre el GOE final de un elemento
 // el servicio calcula: base + fatiguePenalty + positionDecay + pressureMod + gaussian(sigma)
+// calibrado para que un elite con atributos ≈ 90 produzca GOE ≈ +2.0 sin ruido
 export const GOE_WEIGHTS = {
   // fracción de (jump*0.4 + spin*0.3 + steps*0.3)/10 que se traslada al GOE base (escala 0-10 → -5/+5)
-  technicalBase:  0.4,
+  technicalBase:  0.5,
   // reducción de GOE por cada punto de fatiga sobre FATIGUE_BLOCK_THRESHOLD
   fatigueImpact:  0.03,
   // reducción de GOE por posición en el programa (0=primer elemento, 7=último)
-  positionDecay:  0.15,
+  positionDecay:  0.10,
   // escala del efecto de presionCompetitiva sobre el GOE, por punto de presión tras normalizar a [-1,1]
   pressureWeight: 0.5,
 } as const
@@ -154,9 +153,13 @@ export const FALL_GOE_THRESHOLD = -3
 // GDD cap. 5 — deducción ISU por caída (1 pto por caída en senior)
 export const FALL_DEDUCTION = 1.0
 
-// GDD cap. 5 — penalización «Anna Muller»: tras la primera caída del programa,
-// los elementos siguientes pierden un 12 % de GOE (factor 0.88)
-export const FIRST_FALL_GOE_PENALTY = 0.88
+// GDD cap. 5 — penalización ISU genérica que TODO juez aplica a los elementos
+// posteriores a una caída. Convertimos el factor en una resta plana
+// `(1 - factor) * 5` para que también muerda cuando GOE ya es negativo.
+// 0.94 → -0.3 GOE flat sobre cada elemento posterior (severidad media).
+// Los jueces "anti-caídas" (p.ej. Anna Müller) sustituyen este valor con su propio
+// `Judge.sesgos.postFallGoePenalty` (0.88 → -0.6 GOE flat, más severo).
+export const DEFAULT_POST_FALL_GOE_PENALTY = 0.94
 
 // GDD cap. 5 — un elemento con caída y GOE crítico se considera invalidado:
 // no aporta TES (solo cuenta la deducción). emula la regla ISU de "no value"
@@ -174,30 +177,24 @@ export const STRESS_AFTER_FALL_INTERPROGRAM = 4
 
 // ─── 5. Motor PCS — Program Component Score ───────────────────────────────────
 
-// GDD cap. 5 — pesos de atributos fuente para cada componente del PCS (cada fila suma 1.0)
-// SK Skating Skills, TR Transitions, PE Performance, CO Composition, IN Interpretation
-export const PCS_ATTRIBUTE_WEIGHTS: Readonly<Record<string, Partial<Record<AttributeKey, number>>>> = {
-  SK: { jump: 0.30, spin: 0.20, steps: 0.30, stamina: 0.20 },
-  TR: { steps: 0.40, flexibility: 0.25, artistry: 0.35 },
-  PE: { focus: 0.35, resilience: 0.30, artistry: 0.35 },
-  CO: { artistry: 0.50, steps: 0.25, flexibility: 0.25 },
-  IN: { artistry: 0.45, mentalStrength: 0.25, focus: 0.30 },
-} as const
-
-// GDD cap. 5 — coeficiente ISU de cada componente PCS (programa libre senior)
+// ISU senior women — cada componente entra con coeficiente 1.0 y luego el total
+// se multiplica por el factor de programa (0.8 corto, 1.6 libre). Esto coincide
+// con la convención ISU de pre-2022 (5 componentes); fuente de calibración real.
 export const PCS_COMPONENT_COEFFICIENTS = {
   sk: 1.0,
-  tr: 0.8,
+  tr: 1.0,
   pe: 1.0,
   co: 1.0,
   in: 1.0,
 } as const
 
-// GDD cap. 5 — factor de programa ISU: PCS_total = sum_componentes * factor
-// corto: 2.0 · libre: 4.0 (senior)
+// GDD cap. 5 / ISU senior women — factor de programa: PCS_total = Σ componentes · factor
+// con 5 componentes en escala 0–10 cada uno, máximo teórico es 50·1.6 = 80 (libre)
+// y 50·0.8 = 40 (corto). Calibrado para que la elite real (atributos ≈ 90) caiga
+// en la franja olímpica observada: SP 60–80, FS 110–150 totales.
 export const PCS_PROGRAM_FACTOR = {
-  corto: 2.0,
-  libre: 4.0,
+  corto: 0.8,
+  libre: 1.6,
 } as const
 
 // ─── 6. Varianza mental ───────────────────────────────────────────────────────

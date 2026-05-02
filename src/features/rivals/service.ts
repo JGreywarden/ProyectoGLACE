@@ -184,8 +184,10 @@ export function simulateRivalProgram(
   const pcsBase = (techMix * 0.4 + lineMix * 0.4 + (p.motivacionIntrinseca / 100) * 0.2) * 10
   const pcsNoise = gaussian(rng, 0.25)
   const pcsRaw = clamp(pcsBase + pcsNoise, 0, 10)
-  const programFactor = programType === 'corto' ? 2.0 : 4.0
-  const pcs = pcsRaw * 4.8 * programFactor  // sum-of-coefficients (1+0.8+1+1+1=4.8)
+  // PCS_PROGRAM_FACTOR (calibración ISU senior women): corto 0.8, libre 1.6.
+  // 5 componentes con coeficiente 1.0 cada uno: pcs = pcsRaw * 5 * factor.
+  const programFactor = programType === 'corto' ? 0.8 : 1.6
+  const pcs = pcsRaw * 5 * programFactor
 
   return {
     rivalId:    rival.id,

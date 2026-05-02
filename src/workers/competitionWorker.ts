@@ -8,6 +8,7 @@ import {
   simulate,
   simulateProgramElements,
   type CompetitionContextFlags,
+  type RNG,
   type SimulationResult,
 } from '@/features/competition/engine'
 import type { SkaterData } from '@/types'
@@ -39,7 +40,7 @@ export type WorkerResponse =
   | { type: 'error';   message: string }
 
 // mulberry32: small, fast, deterministic PRNG — good enough for gaussian sampling
-function mulberry32(seed: number): () => number {
+function mulberry32(seed: number): RNG {
   let a = seed >>> 0
   return function () {
     a = (a + 0x6d2b79f5) >>> 0
@@ -59,7 +60,9 @@ scope.onmessage = (event: MessageEvent<WorkerRequest>) => {
     return
   }
   try {
-    const rng = typeof data.contextFlags?.seed === 'number'
+    // Math.random is the only acceptable non-determinism source: only used
+    // when the caller explicitly opted out of seeding (no seed in flags).
+    const rng: RNG = typeof data.contextFlags?.seed === 'number'
       ? mulberry32(data.contextFlags.seed)
       : Math.random
 
@@ -70,7 +73,7 @@ scope.onmessage = (event: MessageEvent<WorkerRequest>) => {
     }
 
     if (data.type === 'simulate-program') {
-      const elements = simulateProgramElements(data.program, data.skater, data.contextFlags ?? {}, rng)
+      const elements = simulateProgramElements(data.program, data.skater, data.contextFlags ?? {}, rng, data.judges)
       const score    = finalizeProgramScore(elements, data.skater, data.program, data.judges)
       scope.postMessage({ type: 'program', elements, score } satisfies WorkerResponse)
       return

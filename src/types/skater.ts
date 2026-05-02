@@ -137,6 +137,8 @@ export interface TechnicalAttributes {
   secuenciaDePasos: number
   /** limb extension, line quality — primary driver of PCS SK */
   amplitudLinea:    number
+  /** musicality, expression and stage presence — primary driver of PCS PE/IN/TR */
+  artistica:        number
 }
 
 /** hidden from player; each field unlocks when bond reaches its threshold (0–100) */
@@ -913,7 +915,7 @@ import {
 // psychological attributes tolerate negative values: presionCompetitiva
 // is signed per GDD. autoexigencia is 0–100. split the checks accordingly.
 const PSYCHO_UNIT_KEYS = ['confianza', 'resistenciaMental', 'motivacionIntrinseca', 'autoexigencia'] as const
-const TECHNICAL_KEYS   = ['saltos', 'giros', 'secuenciaDePasos', 'amplitudLinea'] as const
+const TECHNICAL_KEYS   = ['saltos', 'giros', 'secuenciaDePasos', 'amplitudLinea', 'artistica'] as const
 const WEEKLY_UNIT_KEYS = ['vinculo', 'fatigaAcumulada', 'estres'] as const
 
 /**
@@ -1021,6 +1023,7 @@ export const DEFAULT_SKATER_DATA: SkaterData = {
     giros:            32,
     secuenciaDePasos: 28,
     amplitudLinea:    38,
+    artistica:        36,
   },
   psychological: {
     confianza:            52,
