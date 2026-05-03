@@ -13,6 +13,10 @@ export const POTENTIAL_DAMPENING_K = 0.015
 // GDD cap. 17 — fatiga acumulada por encima de este umbral bloquea mejora técnica
 export const FATIGUE_BLOCK_THRESHOLD = 70
 
+// GDD cap. 17 — estrés acumulado por encima de este umbral activa la tensión
+// `paradoja_descanso_emocional` cuando la semana incluye una ranura de descanso
+export const STRESS_HIGH_THRESHOLD = 70
+
 // GDD cap. 17 — multiplicador de velocidad de ganancia cuando motivacionIntrinseca >= 70
 export const MOTIVATION_SPEED_MULTIPLIER = 1.25
 
@@ -32,6 +36,12 @@ export function computeGainCurve(value: number, potential: number, factors = 1):
 // GDD cap. 4 — el vínculo decae cada semana sin ranura Diálogo
 export const BOND_DECAY_PER_WEEK_MIN = 2
 export const BOND_DECAY_PER_WEEK_MAX = 3
+
+// GDD cap. 17 — ventana de semanas sobre la que se mide la tendencia del vínculo
+// para activar la tensión `dialogo_vs_hielo`. una sola semana es demasiado frágil
+// (un evento positivo aislado desactiva la tensión); usar la suma de los deltas
+// de las últimas N semanas captura mejor la noción de "vínculo en declive".
+export const BOND_DECLINE_LOOKBACK_WEEKS = 3
 
 // GDD cap. 3 — umbrales en los que se revelan atributos psicológicos del patinador
 // [20] confianza, [40] resistenciaMental, [55] presionCompetitiva, [65] motivacionIntrinseca
@@ -315,6 +325,14 @@ export const TRAVEL_COST_BY_COMPETITION_TYPE = {
 // con un patinador sin historial; se amplifica si historialLesiones > 70 según
 // `computeInjuryRisk`.
 export const INJURY_LOAD_DIVISOR = 130
+
+// GDD cap. 17 — multiplicador aplicado a la probabilidad de lesión semanal cuando
+// la tensión `tecnico_vs_descanso` está activa (5+ semanas sin descanso). cobra
+// la promesa del GDD "sin descanso 5+ semanas: evento lesión forzado" sin recurrir
+// a un disparo determinista: el roll sigue siendo probabilístico pero el bono
+// hace que ignorar la advertencia salga progresivamente más caro. calibrado para
+// que dos técnicos en estado de overwork pasen de ~6 % a ~10 % de riesgo base.
+export const OVERWORK_INJURY_MULTIPLIER = 1.6
 
 // GDD cap. 3 — pesos para elegir severidad de la lesión cuando el roll dispara
 // una. los pesos suman aproximadamente 1.0; cuerpo-frágil y historialLesiones>70

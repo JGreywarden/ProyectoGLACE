@@ -94,6 +94,24 @@ describe('weeklyInjuryProbability', () => {
     expect(weeklyInjuryProbability(high, s))
       .toBeGreaterThan(weeklyInjuryProbability(low, s) * 1.5)
   })
+
+  it('tecnico_vs_descanso tension multiplies probability by OVERWORK_INJURY_MULTIPLIER', () => {
+    const skater = makeSkater()
+    const s = schedule(['tecnico', 'tecnico', null, null, null])
+    const baseline = weeklyInjuryProbability(skater, s)
+    const overworked = weeklyInjuryProbability(skater, s, ['tecnico_vs_descanso'])
+    // OVERWORK_INJURY_MULTIPLIER = 1.6
+    expect(overworked).toBeGreaterThan(baseline)
+    expect(overworked).toBeCloseTo(baseline * 1.6, 5)
+  })
+
+  it('other tensions do not affect injury probability', () => {
+    const skater = makeSkater()
+    const s = schedule(['tecnico', 'tecnico', null, null, null])
+    const baseline = weeklyInjuryProbability(skater, s)
+    const withOther = weeklyInjuryProbability(skater, s, ['carga_vs_pico', 'ensayo_vs_espontaneidad'])
+    expect(withOther).toBe(baseline)
+  })
 })
 
 // ─── severity & recovery ─────────────────────────────────────────────────────
@@ -157,6 +175,27 @@ describe('rollWeeklyInjury', () => {
     expect(out!.injuredAtWeek).toBe(7)
     expect(out!.recoveryWeeksRemaining).toBe(out!.recoveryWeeksTotal)
     expect(['leve', 'moderada', 'grave']).toContain(out!.severity)
+  })
+
+  it('overwork tension makes the roll fire at a probability that would not trigger otherwise', () => {
+    // baseline: dos técnicos en patinador sano → ~0.0615 (load 8 / divisor 130).
+    // con overwork (× 1.6) → ~0.0985. usamos un trigger en la franja intermedia.
+    const skater = makeSkater()
+    const s = schedule(['tecnico', 'tecnico', null, null, null])
+    const baseline = weeklyInjuryProbability(skater, s)
+    const overworked = weeklyInjuryProbability(skater, s, ['tecnico_vs_descanso'])
+    const trigger = (baseline + overworked) / 2  // a medio camino
+    expect(trigger).toBeGreaterThan(baseline)
+    expect(trigger).toBeLessThan(overworked)
+
+    const without = rollWeeklyInjury(skater, s, { trigger, currentWeek: 5 })
+    const withTension = rollWeeklyInjury(skater, s, {
+      trigger,
+      currentWeek: 5,
+      tensions: ['tecnico_vs_descanso'],
+    })
+    expect(without).toBeNull()
+    expect(withTension).not.toBeNull()
   })
 
   it('returns null when the skater is already injured', () => {

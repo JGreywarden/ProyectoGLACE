@@ -1,7 +1,9 @@
 import {
+  BOND_DECLINE_LOOKBACK_WEEKS,
   computeGainCurve,
   FATIGUE_BLOCK_THRESHOLD,
   MOTIVATION_SPEED_MULTIPLIER,
+  STRESS_HIGH_THRESHOLD,
 } from '@/lib/balance'
 import type { SkaterData } from '@/types'
 import type { SeasonData, WeekSummary } from '@/types'
@@ -22,6 +24,11 @@ export const ACTIVITY_DEFINITIONS: Readonly<Record<ActivityId, Activity>> = {
     cohesionDeltaMin: 0,  cohesionDeltaMax: 0,
     energyCost: 60,
   },
+  // fisico es ranura ergonómica: no mejora ningún atributo técnico porque el
+  // modelo SkaterTechnical no contempla "resistencia" / "fuerza" como dimensiones
+  // separadas. su valor mecánico vive en la modulación de fatiga / lesión:
+  // sostiene cargas técnicas con menor coste de fatiga que un técnico equivalente.
+  // si una fase futura introduce atributos de resistencia, ampliar targetAttributes.
   fisico: {
     id: 'fisico',
     label: 'Físico',
@@ -128,6 +135,10 @@ function isEnsayoVsPreCompeticion(
 }
 
 // GDD cap. 17 — 3: ≥3 consecutive weeks without dialogo AND vinculo declining
+// "declining" se mide como tendencia: suma de vinculoDelta sobre las últimas
+// BOND_DECLINE_LOOKBACK_WEEKS semanas. una sola semana negativa no basta y una
+// semana positiva aislada tampoco desactiva la tensión si la tendencia agregada
+// sigue siendo descendente.
 function isDialogoVsHielo(schedule: WeekSchedule, historialSemanas: WeekSummary[]): boolean {
   if (schedule.slots.some(s => s.activityId === 'dialogo')) return false
   let consecutive = 1  // count current week
@@ -136,8 +147,10 @@ function isDialogoVsHielo(schedule: WeekSchedule, historialSemanas: WeekSummary[
     consecutive++
   }
   if (consecutive < 3) return false
-  const lastWeek = historialSemanas[historialSemanas.length - 1]
-  return lastWeek !== undefined && lastWeek.vinculoDelta < 0
+  const lookback = historialSemanas.slice(-BOND_DECLINE_LOOKBACK_WEEKS)
+  if (lookback.length === 0) return false
+  const trend = lookback.reduce((sum, w) => sum + w.vinculoDelta, 0)
+  return trend < 0
 }
 
 // GDD cap. 17 — 4: total energyCost >75 in the week before a competition
@@ -168,9 +181,25 @@ function isEnsayoVsEspontaneidad(schedule: WeekSchedule, historialSemanas: WeekS
   return count > 4
 }
 
-// GDD cap. 17 — 6: descanso present + skater estres ≥ 70 → seeds "hielo de noche"
+// GDD cap. 17 — 6: descanso present + skater estres ≥ STRESS_HIGH_THRESHOLD
+// → seeds "hielo de noche" (vía TENSION_EVENT_SEEDS abajo)
 function isParadojaDescansoemocional(schedule: WeekSchedule, skaterEstres: number): boolean {
-  return schedule.slots.some(s => s.activityId === 'descanso') && skaterEstres >= 70
+  return schedule.slots.some(s => s.activityId === 'descanso') && skaterEstres >= STRESS_HIGH_THRESHOLD
+}
+
+// ─── tension → narrative seed mapping ────────────────────────────────────────
+//
+// cada tensión activa siembra exactamente un evento narrativo. el sistema
+// narrativo (Fase 6) consumirá estas seeds vía narrativeFlags `seed:<id>`.
+// los nombres son neutros respecto al contenido del evento; el catálogo de
+// eventos los enlaza por id en `dataService`.
+export const TENSION_EVENT_SEEDS: Readonly<Record<TensionId, string>> = {
+  tecnico_vs_descanso:         'cuerpo_al_limite',
+  ensayo_vs_pre_competicion:   'programa_sin_pulir',
+  dialogo_vs_hielo:            'distancia_creciente',
+  carga_vs_pico:               'piernas_pesadas',
+  ensayo_vs_espontaneidad:     'rutina_estancada',
+  paradoja_descanso_emocional: 'hielo_de_noche',
 }
 
 // ─── public tension detector ──────────────────────────────────────────────────
@@ -241,10 +270,10 @@ export function resolveWeekEffects(
     skater.weeklyState.estres,
   )
 
-  const eventSeeds: string[] = []
-  if (tensionsTriggered.includes('paradoja_descanso_emocional')) {
-    eventSeeds.push('hielo_de_noche')
-  }
+  // cada tensión activa siembra su evento narrativo asociado vía
+  // TENSION_EVENT_SEEDS. el sistema narrativo (Fase 6) decidirá cuál disparar
+  // según condiciones; aquí solo dejamos las semillas en effects.eventSeeds.
+  const eventSeeds: string[] = tensionsTriggered.map(t => TENSION_EVENT_SEEDS[t])
 
   return {
     attributeGains,
