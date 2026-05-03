@@ -1,5 +1,7 @@
 // domain types for skater data — central contract for all game logic
 
+import { BOND_LAYERS } from '@/lib/balance'
+
 // ─── enums ───────────────────────────────────────────────────────────────────
 
 /** bond threshold at which the trait becomes visible to the coach */
@@ -96,6 +98,19 @@ export interface TraitMutation {
   description: string
 }
 
+/**
+ * GDD cap. 4 — modo cualitativo en que un rasgo se manifiesta al jugador.
+ * señal     = visible en postura/comportamiento durante un entrenamiento
+ * patron    = regularidad observada a lo largo de varias semanas
+ * verbal    = revelado en una conversación (ranura Diálogo)
+ * profundidad = sale a la luz bajo crisis o con vínculo alto y autoanálisis
+ *
+ * dimension ortogonal al umbral numérico TraitLayer: dos rasgos en la misma
+ * capa pueden tener distinta forma de revelación. opcional mientras se migra
+ * el catálogo de los ~60 traits — sin valor = "cualquier vía" (fallback actual).
+ */
+export type CapaRevelacion = 'señal' | 'patron' | 'verbal' | 'profundidad'
+
 /** static definition of a trait from the GDD — shared across all skaters */
 export interface TraitDefinition {
   id:          TraitId
@@ -103,6 +118,8 @@ export interface TraitDefinition {
   name:        string
   /** bond layer at which the coach can discover this trait */
   layer:       TraitLayer
+  /** GDD cap. 4 — vía cualitativa de revelación; opcional durante la migración */
+  capa?:       CapaRevelacion
   category:    TraitCategory
   /** baseline nature: does it help, hurt, or depend on context? */
   variant:     TraitVariant
@@ -222,13 +239,16 @@ export interface SkaterData {
 
 /**
  * minimum bond value required to reveal each psychological attribute.
+ * derived from BOND_LAYERS in lib/balance.ts (single source of truth);
  * -1 is a sentinel meaning "never revealed by bond alone" (event/dialogue only).
  */
+const [BL_CONFIANZA, BL_RESISTENCIA, BL_PRESION, BL_MOTIVACION] = BOND_LAYERS
+
 export const PSYCHOLOGICAL_THRESHOLDS: Readonly<Record<keyof PsychologicalAttributes, number>> = {
-  confianza:            20,
-  resistenciaMental:    40,
-  presionCompetitiva:   55,
-  motivacionIntrinseca: 65,
+  confianza:            BL_CONFIANZA,
+  resistenciaMental:    BL_RESISTENCIA,
+  presionCompetitiva:   BL_PRESION,
+  motivacionIntrinseca: BL_MOTIVACION,
   autoexigencia:        -1,
 }
 

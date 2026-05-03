@@ -3,6 +3,7 @@
 import type { SkaterData } from '@/types'
 import type { FaseSeason, SeasonData } from '@/types'
 import type { InjurySeverity } from '@/types'
+import type { CapaRevelacion } from '@/types'
 
 // ─── event taxonomy ──────────────────────────────────────────────────────────
 
@@ -102,6 +103,13 @@ export interface NarrativeEvent {
   descripcion:  string
   condiciones:  NarrativeCondition
   opciones:     NarrativeOption[]
+  /**
+   * GDD cap. 4 — vía cualitativa por la que el evento revela información del
+   * patinador (señal/patron/verbal/profundidad). opcional durante la migración
+   * del catálogo; sin valor = "cualquier vía". la fase 6 (generación con Claude
+   * API) la rellenará obligatoriamente para mantener la coherencia narrativa.
+   */
+  capa?:        CapaRevelacion
   /** solo presente cuando tipo === 'momento_competicion' */
   trigger?:     MomentoTrigger
   /** id de la opción que se elige automáticamente si el jugador no decide a
