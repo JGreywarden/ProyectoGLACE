@@ -2,6 +2,11 @@
 // pure functions; rng injectable; never touches stores.
 
 import { rollMutation } from '@/features/athlete'
+import {
+  NARRATIVE_COOLDOWN_WEEKS,
+  NARRATIVE_SOFT_COOLDOWN_FACTOR,
+  NARRATIVE_WEEKLY_WEIGHTS,
+} from '@/lib/balance'
 import type { SkaterData, TraitId } from '@/types'
 import { getFasePorSemana } from '@/types'
 import type { CompetitionSlot } from '@/types'
@@ -42,21 +47,13 @@ const EVENT_FILES: readonly NarrativeEventType[] = [
 ] as const
 
 // ─── cooldown quotas ─────────────────────────────────────────────────────────
+// pesos y cooldowns viven en `lib/balance.ts`; aquí solo tipamos los aliases.
 
-const COOLDOWN_WEEKS: Partial<Record<NarrativeEventType, number>> = {
-  crisis:     3,
-  revelacion: 4,
-}
+const COOLDOWN_WEEKS: Partial<Record<NarrativeEventType, number>> = NARRATIVE_COOLDOWN_WEEKS
 
 // weights for weighted random among weekly-event pool (exclusive of Moments)
-const WEEKLY_WEIGHTS: Record<Exclude<NarrativeEventType, 'momento_competicion'>, number> = {
-  cotidiano:        4,
-  revelacion:       2,
-  crisis:           1,
-  decision_moral:   2,
-  terceros:         2,
-  logro_compartido: 1,
-}
+const WEEKLY_WEIGHTS: Record<Exclude<NarrativeEventType, 'momento_competicion'>, number> =
+  NARRATIVE_WEEKLY_WEIGHTS
 
 const VALID_TYPES: ReadonlySet<string> = new Set<NarrativeEventType>([
   'revelacion',
@@ -69,6 +66,8 @@ const VALID_TYPES: ReadonlySet<string> = new Set<NarrativeEventType>([
 ])
 
 const VALID_TRIGGERS: ReadonlySet<string> = new Set<MomentoTrigger>(['early', 'mid', 'late'])
+
+const VALID_CAPAS: ReadonlySet<string> = new Set(['señal', 'patron', 'verbal', 'profundidad'])
 
 // ─── validators ──────────────────────────────────────────────────────────────
 
@@ -200,6 +199,7 @@ export function validateNarrativeEvent(data: unknown): data is NarrativeEvent {
     return false
   }
 
+  if (data['capa'] !== undefined && !VALID_CAPAS.has(String(data['capa']))) return false
   if (data['defaultOptionId'] !== undefined && typeof data['defaultOptionId'] !== 'string') return false
   if (data['momentTimeoutSeconds'] !== undefined && !isInRange(data['momentTimeoutSeconds'], 1, 60)) return false
 
@@ -424,6 +424,23 @@ function weightedPick<T>(
 }
 
 /**
+ * returns the soft-cooldown multiplier for an event's tipo: 1 by default, but
+ * NARRATIVE_SOFT_COOLDOWN_FACTOR when this tipo was emitted the previous week.
+ * el patrón evita la repetición consecutiva de tipos sin imponer un cooldown
+ * duro adicional (los duros viven en NARRATIVE_COOLDOWN_WEEKS para crisis +
+ * revelacion). pasar `state=undefined` desactiva el ajuste por completo.
+ */
+function softCooldownFactor(
+  tipo: NarrativeEventType,
+  state: WeeklySelectionState | undefined,
+): number {
+  if (!state) return 1
+  const last = state.lastEmittedBySubtype[tipo]
+  if (last === undefined) return 1
+  return state.currentWeek - last <= 1 ? NARRATIVE_SOFT_COOLDOWN_FACTOR : 1
+}
+
+/**
  * selects one weekly narrative event from the pool. Excludes Moments, events
  * already emitted, and events on cooldown. Picks weighted-randomly by type.
  */
@@ -443,7 +460,9 @@ export function selectWeeklyEvent(
   if (candidates.length === 0) return null
   return weightedPick(
     candidates,
-    e => (e.tipo === 'momento_competicion' ? 0 : WEEKLY_WEIGHTS[e.tipo]),
+    e => (e.tipo === 'momento_competicion'
+      ? 0
+      : WEEKLY_WEIGHTS[e.tipo] * softCooldownFactor(e.tipo, state)),
     rng,
   )
 }

@@ -123,6 +123,16 @@ describe('validateNarrativeEvent', () => {
     expect(validateNarrativeEvent(bad)).toBe(false)
   })
 
+  it('accepts a valid CapaRevelacion value', () => {
+    const ev = { ...makeEvent(), capa: 'verbal' }
+    expect(validateNarrativeEvent(ev)).toBe(true)
+  })
+
+  it('rejects an unknown CapaRevelacion value', () => {
+    const ev = { ...makeEvent(), capa: 'inventada' }
+    expect(validateNarrativeEvent(ev)).toBe(false)
+  })
+
   it('rejects unknown tipo', () => {
     const bad = { ...makeEvent(), tipo: 'bogus' } as unknown
     expect(validateNarrativeEvent(bad)).toBe(false)
@@ -177,6 +187,36 @@ describe('evaluateConditions', () => {
     const ev = makeEvent({ condiciones: { temporadaMinima: 3 } })
     expect(evaluateConditions(ev, ctx)).toBe(false)
   })
+
+  it('excludes when vinculo > maxVinculo', () => {
+    const ctx = makeContext({ skater: makeSkater({ vinculo: 80 }) })
+    const ev = makeEvent({ condiciones: { maxVinculo: 70 } })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('passes when vinculo <= maxVinculo', () => {
+    const ctx = makeContext({ skater: makeSkater({ vinculo: 60 }) })
+    const ev = makeEvent({ condiciones: { maxVinculo: 70 } })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('excludes when estres < minEstres', () => {
+    const ctx = makeContext({ skater: makeSkater({ estres: 20 }) })
+    const ev = makeEvent({ condiciones: { minEstres: 50 } })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('excludes when estres > maxEstres', () => {
+    const ctx = makeContext({ skater: makeSkater({ estres: 80 }) })
+    const ev = makeEvent({ condiciones: { maxEstres: 50 } })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('passes when estres is within [minEstres, maxEstres]', () => {
+    const ctx = makeContext({ skater: makeSkater({ estres: 40 }) })
+    const ev = makeEvent({ condiciones: { minEstres: 20, maxEstres: 60 } })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
 })
 
 // ─── selectWeeklyEvent ───────────────────────────────────────────────────────
@@ -222,6 +262,41 @@ describe('selectWeeklyEvent', () => {
       currentWeek: 5,
       lastEmittedBySubtype: { crisis: 2 },
     })?.id).toBe('c')
+  })
+
+  it('soft-cooldown: prefiere otro tipo cuando el del candidato salió la semana anterior', () => {
+    // dos candidatos del mismo peso base (cotidiano:4 vs terceros:2 → forzamos
+    // misma forma usando cotidiano contra terceros con factor 0.3 sobre cotidiano
+    // último emitido la semana anterior). pesos efectivos: cotidiano = 4*0.3 = 1.2,
+    // terceros = 2 → suma 3.2; rng=0 cae en cotidiano (primer candidato). para
+    // probar el soft cooldown buscamos el cruce: rng=0.5 → r=1.6 > 1.2 → terceros.
+    const a = makeEvent({ id: 'a', tipo: 'cotidiano' })
+    const b = makeEvent({ id: 'b', tipo: 'terceros' })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 5 },
+    })
+    // sin estado: cotidiano (peso 4) gana sobre terceros (peso 2) en rng=0.5
+    // (r=3 → resta 4 → -1 → cotidiano)
+    expect(selectWeeklyEvent([a, b], ctx, () => 0.5)?.id).toBe('a')
+    // con estado señalando cotidiano emitido la semana pasada, su peso baja a 1.2
+    // (r=1.6 → resta 1.2 → 0.4 → no entra; resta 2 → -1.6 → terceros)
+    expect(selectWeeklyEvent([a, b], ctx, () => 0.5, {
+      currentWeek: 5,
+      lastEmittedBySubtype: { cotidiano: 4 },
+    })?.id).toBe('b')
+  })
+
+  it('soft-cooldown: no se aplica si el tipo se emitió hace más de una semana', () => {
+    const a = makeEvent({ id: 'a', tipo: 'cotidiano' })
+    const b = makeEvent({ id: 'b', tipo: 'terceros' })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 5 },
+    })
+    // cotidiano emitido hace 2 semanas → factor 1, peso 4 vs 2, rng=0.5 → cotidiano
+    expect(selectWeeklyEvent([a, b], ctx, () => 0.5, {
+      currentWeek: 5,
+      lastEmittedBySubtype: { cotidiano: 3 },
+    })?.id).toBe('a')
   })
 })
 
@@ -572,6 +647,38 @@ describe('evaluateConditions — contexto temporal', () => {
       season: { ...DEFAULT_SEASON_DATA, semanaActual: 5, calendario: [slot(20)] },
     })
     expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('semanasDesdeUltimaCompeticion blocks events before the min distance', () => {
+    // last competition at week 10, current week 11 → distance 1, below min 3
+    const ev = makeEvent({
+      condiciones: { semanasDesdeUltimaCompeticion: { min: 3 } },
+    })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 11, calendario: [slot(10)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
+  })
+
+  it('semanasDesdeUltimaCompeticion passes when distance is within range', () => {
+    // last competition at week 5, current week 9 → distance 4, within [3, 6]
+    const ev = makeEvent({
+      condiciones: { semanasDesdeUltimaCompeticion: { min: 3, max: 6 } },
+    })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 9, calendario: [slot(5)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(true)
+  })
+
+  it('semanasDesdeUltimaCompeticion blocks when no past competition exists', () => {
+    const ev = makeEvent({
+      condiciones: { semanasDesdeUltimaCompeticion: { min: 0 } },
+    })
+    const ctx = makeContext({
+      season: { ...DEFAULT_SEASON_DATA, semanaActual: 5, calendario: [slot(20)] },
+    })
+    expect(evaluateConditions(ev, ctx)).toBe(false)
   })
 })
 

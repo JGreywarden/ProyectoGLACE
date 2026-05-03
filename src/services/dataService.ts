@@ -3,21 +3,17 @@
 
 import type { FaseSeason } from '@/types'
 import type { InstallationId } from '@/types'
+import type { NarrativeEventType } from '@/features/narrative/types'
 import traitsRaw from '@/data/traits.json'
 
 // ─── event types ──────────────────────────────────────────────────────────────
 
-export type EventType =
-  | 'revelacion'
-  | 'crisis'
-  | 'decision_moral'
-  | 'terceros'
-  | 'cotidiano'
-  | 'logro_compartido'
-
-const EVENT_TYPES: readonly EventType[] = [
-  'revelacion', 'crisis', 'decision_moral', 'terceros', 'cotidiano', 'logro_compartido',
-]
+// derivado de NarrativeEventType (fuente única de verdad). dataService no maneja
+// momentos de competición — solo cargas semanales por tipo. al añadir un nuevo
+// tipo en NarrativeEventType, EVENT_PATHS exige declarar la ruta del JSON o no
+// compila; EVENT_TYPES se deriva de las claves para mantener forma + contenido
+// sincronizados.
+export type EventType = Exclude<NarrativeEventType, 'momento_competicion'>
 
 const EVENT_PATHS: Record<EventType, string> = {
   revelacion:      '/data/events/revelacion.json',
@@ -27,6 +23,8 @@ const EVENT_PATHS: Record<EventType, string> = {
   cotidiano:       '/data/events/cotidiano.json',
   logro_compartido: '/data/events/logro_compartido.json',
 }
+
+const EVENT_TYPES: readonly EventType[] = Object.keys(EVENT_PATHS) as EventType[]
 
 // ─── narrative event types ────────────────────────────────────────────────────
 

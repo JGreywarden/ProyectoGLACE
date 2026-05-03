@@ -3,7 +3,7 @@
 import {
   BOND_DECAY_PER_WEEK_MIN,
   BOND_DECAY_PER_WEEK_MAX,
-  BOND_LAYERS,
+  TRAIT_VISIBILITY_THRESHOLDS,
 } from '@/lib/balance'
 import type { SkaterData, TraitDefinition, TraitId } from '@/types'
 import type { TechnicalAttributes } from '@/types'
@@ -66,12 +66,13 @@ export function applyFatigueRecovery(
 
 /**
  * returns the highest trait layer unlocked at the given bond level.
- * layer 1 ≥ 20, layer 2 ≥ 40, layer 3 ≥ 65 (BOND_LAYERS indices 0, 1, 3).
+ * los rasgos se revelan en tres capas (20, 40, 65) — fuente: TRAIT_VISIBILITY_THRESHOLDS.
+ * los atributos psicológicos usan una escala distinta (BOND_LAYERS, 4 valores con 55).
  */
 export function computeTraitVisibilityLayer(bond: number): 0 | 1 | 2 | 3 {
-  if (bond >= BOND_LAYERS[3]) return 3 // >= 65
-  if (bond >= BOND_LAYERS[1]) return 2 // >= 40
-  if (bond >= BOND_LAYERS[0]) return 1 // >= 20
+  if (bond >= TRAIT_VISIBILITY_THRESHOLDS[2]) return 3 // >= 65
+  if (bond >= TRAIT_VISIBILITY_THRESHOLDS[1]) return 2 // >= 40
+  if (bond >= TRAIT_VISIBILITY_THRESHOLDS[0]) return 1 // >= 20
   return 0
 }
 

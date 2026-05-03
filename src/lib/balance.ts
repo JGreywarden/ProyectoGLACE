@@ -43,9 +43,47 @@ export const BOND_DECAY_PER_WEEK_MAX = 3
 // de las últimas N semanas captura mejor la noción de "vínculo en declive".
 export const BOND_DECLINE_LOOKBACK_WEEKS = 3
 
-// GDD cap. 3 — umbrales en los que se revelan atributos psicológicos del patinador
+// GDD cap. 3 — umbrales de vínculo en los que se revelan los **atributos psicológicos**
+// del patinador. fuente única de verdad; `PSYCHOLOGICAL_THRESHOLDS` (en types/skater.ts)
+// se deriva de aquí para evitar duplicación silenciosa.
 // [20] confianza, [40] resistenciaMental, [55] presionCompetitiva, [65] motivacionIntrinseca
 export const BOND_LAYERS: readonly [20, 40, 55, 65] = [20, 40, 55, 65]
+
+// GDD cap. 3 — umbrales independientes para los **rasgos** (traits) del patinador.
+// los rasgos viven en una dimensión distinta a los atributos psicológicos: el GDD
+// agrupa los ~60 traits en tres capas de revelación (20, 40, 65), sin un escalón
+// intermedio en 55 — por eso la lista no es idéntica a BOND_LAYERS. consumida por
+// `computeTraitVisibilityLayer` y por el enum `TraitLayer`.
+export const TRAIT_VISIBILITY_THRESHOLDS: readonly [20, 40, 65] = [20, 40, 65]
+
+// GDD cap. 4 — pesos de selección semanal por tipo de evento narrativo. el motor
+// usa weighted-random sobre el pool ya filtrado por condiciones y cooldowns. los
+// valores reflejan el ritmo narrativo prescrito en el GDD (cotidiano dominante,
+// crisis y logro_compartido escasos). consumido por `selectWeeklyEvent`.
+export const NARRATIVE_WEEKLY_WEIGHTS = {
+  cotidiano:        4,
+  revelacion:       2,
+  crisis:           1,
+  decision_moral:   2,
+  terceros:         2,
+  logro_compartido: 1,
+} as const
+
+// GDD cap. 4 — número mínimo de semanas que deben pasar entre dos emisiones del
+// mismo tipo. solo `crisis` y `revelacion` tienen cooldown duro: el resto admiten
+// repetición consecutiva (ver `NARRATIVE_SOFT_COOLDOWN_FACTOR` para la mitigación).
+export const NARRATIVE_COOLDOWN_WEEKS = {
+  crisis:     3,
+  revelacion: 4,
+} as const
+
+// GDD cap. 4 — multiplicador aplicado al peso del tipo de evento emitido la
+// semana anterior. evita que dos cotidianos (o dos terceros, etc.) caigan dos
+// semanas seguidas sin recurrir a un cooldown duro: el peso baja, no se anula.
+// 0.3 es agresivo pero no exclusivo; un usuario puede repetir tipo si hay pocas
+// alternativas. calibrado para que la diversidad de tipos sea visible sin matar
+// la coherencia narrativa de "una racha de cotidianos".
+export const NARRATIVE_SOFT_COOLDOWN_FACTOR = 0.3
 
 // ─── 3. Efectos por tipo de ranura semanal ────────────────────────────────────
 
