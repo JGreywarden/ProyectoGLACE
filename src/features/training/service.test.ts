@@ -145,6 +145,32 @@ describe('detectTensions — dialogo_vs_hielo', () => {
 
     expect(detectTensions(schedule, historial, season)).not.toContain('dialogo_vs_hielo')
   })
+
+  it('does not fire when one negative week is offset by a positive trend', () => {
+    // tendencia agregada positiva: una semana de -2 seguida de +5 +5 → trend = +8
+    const historial = [
+      makeWeek(1, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico'], -2),
+      makeWeek(2, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico'],  5),
+      makeWeek(3, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico'],  5),
+    ]
+    const schedule = makeSchedule(['fisico', null, null, null, null])
+    const season = { ...DEFAULT_SEASON_DATA, semanaActual: 4, historialSemanas: historial }
+
+    expect(detectTensions(schedule, historial, season)).not.toContain('dialogo_vs_hielo')
+  })
+
+  it('still fires when an isolated positive week sits inside a declining trend', () => {
+    // un evento positivo aislado no debe ocultar la tendencia general -3 +1 -3 = -5
+    const historial = [
+      makeWeek(1, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico'], -3),
+      makeWeek(2, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico'],  1),
+      makeWeek(3, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico'], -3),
+    ]
+    const schedule = makeSchedule(['fisico', null, null, null, null])
+    const season = { ...DEFAULT_SEASON_DATA, semanaActual: 4, historialSemanas: historial }
+
+    expect(detectTensions(schedule, historial, season)).toContain('dialogo_vs_hielo')
+  })
 })
 
 describe('detectTensions — carga_vs_pico', () => {
@@ -285,6 +311,53 @@ describe('resolveWeekEffects', () => {
 
     expect(effects.eventSeeds).toContain('hielo_de_noche')
     expect(effects.tensionsTriggered).toContain('paradoja_descanso_emocional')
+  })
+
+  it('seeds cuerpo_al_limite when tecnico_vs_descanso fires', () => {
+    const historial = [1, 2, 3, 4].map(n => makeWeek(n, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico']))
+    const season = { ...DEFAULT_SEASON_DATA, semanaActual: 5, historialSemanas: historial }
+    const schedule = makeSchedule(['tecnico', null, null, null, null])
+
+    const effects = resolveWeekEffects(schedule, DEFAULT_SKATER_DATA, season, {}, deterministicRng)
+
+    expect(effects.tensionsTriggered).toContain('tecnico_vs_descanso')
+    expect(effects.eventSeeds).toContain('cuerpo_al_limite')
+  })
+
+  it('seeds piernas_pesadas when carga_vs_pico fires', () => {
+    const season: SeasonData = {
+      ...DEFAULT_SEASON_DATA,
+      semanaActual: 4,
+      calendario: [makeComp(5)],
+    }
+    // 2 técnicos = 120 energy > 75 y competición la próxima semana
+    const schedule = makeSchedule(['tecnico', 'tecnico', null, null, null])
+
+    const effects = resolveWeekEffects(schedule, DEFAULT_SKATER_DATA, season, {}, deterministicRng)
+
+    expect(effects.tensionsTriggered).toContain('carga_vs_pico')
+    expect(effects.eventSeeds).toContain('piernas_pesadas')
+  })
+
+  it('emits one seed per triggered tension', () => {
+    // historial montado para activar dos tensiones simultáneas:
+    // tecnico_vs_descanso (5 sem sin descanso) y ensayo_vs_espontaneidad (>4 ensayos)
+    const historial = [
+      makeWeek(1, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico']),
+      makeWeek(2, ['ensayo', 'ensayo', 'ensayo', 'ensayo', 'ensayo']),
+      makeWeek(3, ['ensayo']),
+      makeWeek(4, ['ensayo']),
+    ]
+    const season = { ...DEFAULT_SEASON_DATA, semanaActual: 5, historialSemanas: historial }
+    const schedule = makeSchedule(['ensayo', null, null, null, null])
+
+    const effects = resolveWeekEffects(schedule, DEFAULT_SKATER_DATA, season, {}, deterministicRng)
+
+    expect(effects.tensionsTriggered).toContain('tecnico_vs_descanso')
+    expect(effects.tensionsTriggered).toContain('ensayo_vs_espontaneidad')
+    expect(effects.eventSeeds).toContain('cuerpo_al_limite')
+    expect(effects.eventSeeds).toContain('rutina_estancada')
+    expect(effects.eventSeeds).toHaveLength(effects.tensionsTriggered.length)
   })
 
   it('accumulates fatigue across multiple slots', () => {

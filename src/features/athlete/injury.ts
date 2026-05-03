@@ -8,12 +8,13 @@ import {
   HISTORIAL_INCREASE_BY_SEVERITY,
   INJURY_LOAD_DIVISOR,
   INJURY_SEVERITY_WEIGHTS,
+  OVERWORK_INJURY_MULTIPLIER,
   SEVERITY_RECOVERY_WEEKS,
   TECHO_LOSS_RANGE_GRAVE,
   TRAIT_INJURY_MULTIPLIERS,
 } from '@/lib/balance'
 import type { InjuryRecord, InjurySeverity, SkaterData } from '@/types'
-import type { ActivityId, WeekSchedule } from '@/features/training'
+import type { ActivityId, TensionId, WeekSchedule } from '@/features/training'
 import { ACTIVITY_DEFINITIONS } from '@/features/training'
 
 import { computeInjuryRisk } from './service'
@@ -45,10 +46,16 @@ function traitMultiplier(skater: SkaterData): number {
   return factor
 }
 
-/** raw probability (0–1) that this week's load triggers an injury */
+/** raw probability (0–1) that this week's load triggers an injury.
+ *  `tensions` viene del detector de training/service: si incluye
+ *  `tecnico_vs_descanso` (5+ semanas sin descanso) la probabilidad se amplifica
+ *  por OVERWORK_INJURY_MULTIPLIER. esto cobra mecánicamente la promesa GDD
+ *  "sin descanso 5+ semanas: evento lesión forzado" sin perder el roll
+ *  probabilístico ni la inyección de rng. */
 export function weeklyInjuryProbability(
   skater: SkaterData,
   schedule: WeekSchedule,
+  tensions: readonly TensionId[] = [],
 ): number {
   const load = weeklyInjuryLoad(schedule)
   if (load <= 0) return 0
@@ -56,9 +63,11 @@ export function weeklyInjuryProbability(
   const amplified = computeInjuryRisk(skater, load)
   // fatigue contributes linearly above 60
   const fatigueBoost = Math.max(0, skater.weeklyState.fatigaAcumulada - 60) / 100
+  // overwork: prolonged absence of descanso slot multiplies risk
+  const overworkBoost = tensions.includes('tecnico_vs_descanso') ? OVERWORK_INJURY_MULTIPLIER : 1
   // map to 0–1; calibrated so two técnicos (load 8) ≈ 6 % at baseline
   const base = amplified / INJURY_LOAD_DIVISOR
-  const probability = base * (1 + fatigueBoost) * traitMultiplier(skater)
+  const probability = base * (1 + fatigueBoost) * traitMultiplier(skater) * overworkBoost
   return Math.max(0, Math.min(1, probability))
 }
 
@@ -118,6 +127,8 @@ export interface InjuryRollOptions {
   currentWeek: number
   /** fisioterapia installation level 0–4, when known */
   fisioterapiaLevel?: number
+  /** active tensions for this week; `tecnico_vs_descanso` boosts probability */
+  tensions?: readonly TensionId[]
 }
 
 /**
@@ -132,7 +143,7 @@ export function rollWeeklyInjury(
   options: InjuryRollOptions,
 ): InjuryRecord | null {
   if (skater.weeklyState.currentInjury) return null
-  const probability = weeklyInjuryProbability(skater, schedule)
+  const probability = weeklyInjuryProbability(skater, schedule, options.tensions)
   if (options.trigger >= probability) return null
   const rng = options.rng ?? Math.random
   const severity = pickSeverity(skater, rng)

@@ -465,6 +465,7 @@ export async function runWeek(
       rng,
       currentWeek:       season.semanaActual,
       fisioterapiaLevel,
+      tensions:          effects.tensionsTriggered,
     })
     if (newInjury) {
       skater = {
