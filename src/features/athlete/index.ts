@@ -18,6 +18,7 @@ export {
   pickRecoveryWeeks,
   rollWeeklyInjury,
   rollFallInjury,
+  forceOverworkInjury,
   tickInjuryWeek,
   activityAllowedDuringInjury,
   maskInjuredSchedule,

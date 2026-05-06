@@ -79,11 +79,12 @@ export function SeasonEnd() {
       age: gs.currentSkater!.age + 1,
       weeklyState: {
         ...gs.currentSkater!.weeklyState,
-        // intersession: fatiga y estrés bajan; vínculo decae un poco; semanasEntrenadas reset
-        fatigaAcumulada:   Math.max(0, gs.currentSkater!.weeklyState.fatigaAcumulada - 30),
-        estres:            Math.max(0, gs.currentSkater!.weeklyState.estres - 20),
-        vinculo:           Math.max(0, gs.currentSkater!.weeklyState.vinculo - 5),
-        semanasEntrenadas: 0,
+        // intersession: fatiga y estrés bajan; vínculo decae un poco; contadores semanales reset
+        fatigaAcumulada:         Math.max(0, gs.currentSkater!.weeklyState.fatigaAcumulada - 30),
+        estres:                  Math.max(0, gs.currentSkater!.weeklyState.estres - 20),
+        vinculo:                 Math.max(0, gs.currentSkater!.weeklyState.vinculo - 5),
+        semanasEntrenadas:       0,
+        consecutivasSinDescanso: 0,
       },
     }
     const nextSeason = {

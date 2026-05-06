@@ -89,6 +89,9 @@ export function WeekProcessing() {
           season: result.season,
         })
         useGameStore.getState().setLastEconomy(result.economyBreakdown, result.pressureState)
+        // persist narrative flags emitted during the week (seeds + economic/injury
+        // signals) so future event-condition checks see them — see auditoría B4 (C1)
+        useNarrativeStore.getState().mergeWeeklyFlags(result.narrativeFlags)
 
         // persist the cohesion / vínculo-musical updates on each program so
         // they accumulate week after week (consumed by next week's PCS).
@@ -109,9 +112,9 @@ export function WeekProcessing() {
           // commit the externally-selected event so the NarrativeEvent screen
           // finds it on mount (otherwise the player lands on "Sin evento activo")
           useNarrativeStore.getState().commitWeeklyEvent(result.triggeredEvent, {
-            skater: result.skater,
-            season: result.season,
-            narrativeFlags,
+            skater:         result.skater,
+            season:         result.season,
+            narrativeFlags: result.narrativeFlags,
             emittedEvents,
             decisionHistory,
           })

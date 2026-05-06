@@ -372,6 +372,11 @@ export const INJURY_LOAD_DIVISOR = 130
 // que dos técnicos en estado de overwork pasen de ~6 % a ~10 % de riesgo base.
 export const OVERWORK_INJURY_MULTIPLIER = 1.6
 
+// GDD cap. 3 — semanas seguidas sin ranura `descanso` antes de forzar una lesión
+// garantizada (regla dura, no probabilística). el multiplicador OVERWORK sube la
+// probabilidad antes; este umbral es el seguro de último recurso.
+export const FORCED_OVERWORK_THRESHOLD = 5
+
 // GDD cap. 3 — pesos para elegir severidad de la lesión cuando el roll dispara
 // una. los pesos suman aproximadamente 1.0; cuerpo-frágil y historialLesiones>70
 // recargan la cola hacia 'moderada' y 'grave' (ver injury.ts).

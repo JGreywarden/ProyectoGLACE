@@ -217,11 +217,12 @@ describe('simulate', () => {
         velocidadRecuperacion: 80,
       },
       weeklyState: {
-        vinculo:           70,
-        fatigaAcumulada:   30,
-        estres:            30,
-        semanasEntrenadas: 10,
-        currentInjury:     null,
+        vinculo:                 70,
+        fatigaAcumulada:         30,
+        estres:                  30,
+        semanasEntrenadas:       10,
+        consecutivasSinDescanso: 0,
+        currentInjury:           null,
       },
     })
     const elementos: ProgramElement[] = Array.from({ length: 8 }, (_, i) => ({
@@ -248,7 +249,7 @@ describe('simulate', () => {
         confianza: 85, resistenciaMental: 85, presionCompetitiva: 0,
         motivacionIntrinseca: 85, autoexigencia: 80,
       },
-      weeklyState:   { vinculo: 80, fatigaAcumulada: 20, estres: 25, semanasEntrenadas: 25, currentInjury: null },
+      weeklyState:   { vinculo: 80, fatigaAcumulada: 20, estres: 25, semanasEntrenadas: 25, consecutivasSinDescanso: 0, currentInjury: null },
     })
     // 7 jumps (~5.5 avg) + 3 spins (3.0) + 1 step + 1 choreo — closer to a real elite FS budget
     const elementos: ProgramElement[] = [
