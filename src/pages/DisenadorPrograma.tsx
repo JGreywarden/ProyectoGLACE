@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useShallow } from 'zustand/shallow'
 
 import { GameState, useGameStore } from '@/stores/gameStore'
 import { useProgramStore } from '@/features/program'
@@ -27,13 +26,12 @@ const EMPTY_PROGRAMS:   readonly ProgramData[] = []
 export function DisenadorPrograma() {
   const navigate = useNavigate()
 
-  const { skater, season, gameState } = useGameStore(
-    useShallow(s => ({
-      skater:    s.currentSkater,
-      season:    s.currentSeason,
-      gameState: s.currentState,
-    })),
-  )
+  // skater is consumed in many places (id, name, recomputeScores) so we
+  // subscribe to the entity. season only contributes its temporadaNumero — a
+  // primitive — so we narrow there to skip re-renders for unrelated season changes.
+  const skater          = useGameStore(s => s.currentSkater)
+  const temporadaNumero = useGameStore(s => s.currentSeason?.temporadaNumero)
+  const gameState       = useGameStore(s => s.currentState)
 
   const activeType = useProgramStore(s => s.activeType)
   const draft      = useProgramStore(s => s.drafts[s.activeType] ?? null)
@@ -61,7 +59,7 @@ export function DisenadorPrograma() {
   // make sure both drafts exist as soon as the screen mounts so the player can
   // freely switch tabs without ever losing in-progress work
   useEffect(() => {
-    if (!skater || !season) return
+    if (!skater || temporadaNumero === undefined) return
     for (const tipo of PROGRAM_TYPES) {
       const fallback: MusicInfo = {
         sourceId: '',
@@ -69,9 +67,9 @@ export function DisenadorPrograma() {
         duration: 0,
         tempo:    null,
       }
-      ensureDraft(tipo, skater.id, season.temporadaNumero, fallback)
+      ensureDraft(tipo, skater.id, temporadaNumero, fallback)
     }
-  }, [skater, season, ensureDraft])
+  }, [skater, temporadaNumero, ensureDraft])
 
   // recompute projected scores whenever the active draft changes — recomputeScores
   // only writes into projectedScores so this can safely depend on `draft` itself
@@ -84,12 +82,12 @@ export function DisenadorPrograma() {
   // even when we render the loading fallback below
   const confirmedTypes = useMemo(() => {
     const out = new Set<ProgramType>()
-    const temporada = season?.temporadaNumero ?? -1
+    const temporada = temporadaNumero ?? -1
     for (const p of confirmedForSkater) if (p.temporada === temporada) out.add(p.tipo)
     return out
-  }, [confirmedForSkater, season?.temporadaNumero])
+  }, [confirmedForSkater, temporadaNumero])
 
-  if (!skater || !season || !draft) {
+  if (!skater || temporadaNumero === undefined || !draft) {
     return (
       <div className="flex min-h-screen items-center justify-center glace-vignette">
         <p className="font-display italic text-content-secondary">cargando diseñador…</p>
@@ -160,7 +158,7 @@ export function DisenadorPrograma() {
             <span className="italic text-content-disabled">programa</span> {activeType === 'corto' ? 'corto' : 'libre'}
           </h1>
           <p className="font-display italic text-lg text-content-secondary">
-            de {skater.name} · temporada {season.temporadaNumero}
+            de {skater.name} · temporada {temporadaNumero}
           </p>
         </div>
       </header>

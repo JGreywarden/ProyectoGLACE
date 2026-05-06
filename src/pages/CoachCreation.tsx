@@ -332,14 +332,21 @@ export function CoachCreation() {
       historialSemanas:    [],
     }
 
-    const gs = useGameStore.getState()
-    gs.setCurrentCoach(coach)
-    gs.setCurrentSkater(skater)
-    gs.setCurrentClub(club)
-    gs.setCurrentSeason(season)
+    // bootstrap: seed all four entities atomically — a single setState avoids
+    // intermediate renders that would expose a half-populated game state (D3)
+    useGameStore.setState(
+      {
+        currentCoach:  coach,
+        currentSkater: skater,
+        currentClub:   club,
+        currentSeason: season,
+      },
+      false,
+      'game/bootstrap',
+    )
     void useNarrativeStore.getState().loadPool()
 
-    gs.changeState(GameState.PROGRAM_DESIGNER)
+    useGameStore.getState().changeState(GameState.PROGRAM_DESIGNER)
     navigate('/disenador-programa', { replace: true })
   }
 

@@ -5,7 +5,6 @@
 
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useShallow } from 'zustand/shallow'
 
 import { useGameStore } from '@/stores/gameStore'
 import { useNarrativeStore } from '@/features/narrative'
@@ -31,9 +30,9 @@ const TIPO_LABEL: Record<NarrativeEventType, string> = {
 
 export function CoachDiary() {
   const navigate = useNavigate()
-  const { skater } = useGameStore(
-    useShallow(s => ({ skater: s.currentSkater })),
-  )
+  // only the skater name is consumed in this view; subscribe to the primitive
+  // so that any other mutation on currentSkater (fatiga, vínculo…) skips this render
+  const skaterName = useGameStore(s => s.currentSkater?.name)
   // narrow selectors so unrelated narrative mutations (currentEvent, lastContext)
   // do not re-render the diary while the player is reviewing it
   const decisionHistory = useNarrativeStore(s => s.decisionHistory)
@@ -107,7 +106,7 @@ export function CoachDiary() {
           </h1>
           <p className="font-display italic text-lg text-content-secondary max-w-2xl">
             Cada conversación, cada elección bajo presión.
-            {skater && <> {skater.name} recuerda más de lo que crees.</>}
+            {skaterName && <> {skaterName} recuerda más de lo que crees.</>}
           </p>
         </header>
 

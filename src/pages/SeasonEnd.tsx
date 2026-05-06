@@ -32,20 +32,24 @@ function generateDefaultCalendar(): CompetitionSlot[] {
 
 export function SeasonEnd() {
   const navigate = useNavigate()
-  const { skater, season, club } = useGameStore(
-    useShallow((s) => ({
-      skater: s.currentSkater,
-      season: s.currentSeason,
-      club:   s.currentClub,
-    })),
-  )
+  // skater + club consumed in many fields; season narrowed to the data this
+  // intersession screen reads (history + results + temporadaNumero) so that
+  // mutations to other season fields do not invalidate the breakdown memo.
+  const skater = useGameStore(s => s.currentSkater)
+  const club   = useGameStore(s => s.currentClub)
+  const { temporadaNumero, historialSemanas, resultadosTemporada } =
+    useGameStore(useShallow(s => ({
+      temporadaNumero:     s.currentSeason?.temporadaNumero,
+      historialSemanas:    s.currentSeason?.historialSemanas,
+      resultadosTemporada: s.currentSeason?.resultadosTemporada,
+    })))
 
   const breakdown = useMemo(() => {
-    if (!season) return null
+    if (!historialSemanas || !resultadosTemporada) return null
     const counts = {} as Record<ActivityId, number>
     let competiciones = 0
     let podios = 0
-    for (const w of season.historialSemanas) {
+    for (const w of historialSemanas) {
       for (const a of w.ranuraEjecutadas) {
         const id = a as ActivityId
         counts[id] = (counts[id] ?? 0) + 1
@@ -53,7 +57,7 @@ export function SeasonEnd() {
       if (w.competicionResultadoId) competiciones += 1
     }
     const medals = { oro: 0, plata: 0, bronce: 0 }
-    for (const r of season.resultadosTemporada) {
+    for (const r of resultadosTemporada) {
       if (r.posicion === 1) medals.oro += 1
       else if (r.posicion === 2) medals.plata += 1
       else if (r.posicion === 3) medals.bronce += 1
@@ -61,9 +65,9 @@ export function SeasonEnd() {
     }
     const totalElegidas = Object.values(counts).reduce((a, b) => a + b, 0)
     return { counts, competiciones, podios, medals, totalElegidas }
-  }, [season])
+  }, [historialSemanas, resultadosTemporada])
 
-  if (!skater || !season || !club || !breakdown) {
+  if (!skater || temporadaNumero === undefined || !resultadosTemporada || !club || !breakdown) {
     return (
       <div className="flex min-h-screen items-center justify-center glace-vignette">
         <p className="font-display italic text-content-secondary">cerrando temporada…</p>
@@ -74,15 +78,16 @@ export function SeasonEnd() {
   function startNextSeason(skipDesigner: boolean) {
     const gs = useGameStore.getState()
     const cur = gs.currentSeason!
+    const curSkater = gs.currentSkater!
     const nextSkater = {
-      ...gs.currentSkater!,
-      age: gs.currentSkater!.age + 1,
+      ...curSkater,
+      age: curSkater.age + 1,
       weeklyState: {
-        ...gs.currentSkater!.weeklyState,
+        ...curSkater.weeklyState,
         // intersession: fatiga y estrés bajan; vínculo decae un poco; contadores semanales reset
-        fatigaAcumulada:         Math.max(0, gs.currentSkater!.weeklyState.fatigaAcumulada - 30),
-        estres:                  Math.max(0, gs.currentSkater!.weeklyState.estres - 20),
-        vinculo:                 Math.max(0, gs.currentSkater!.weeklyState.vinculo - 5),
+        fatigaAcumulada:         Math.max(0, curSkater.weeklyState.fatigaAcumulada - 30),
+        estres:                  Math.max(0, curSkater.weeklyState.estres - 20),
+        vinculo:                 Math.max(0, curSkater.weeklyState.vinculo - 5),
         semanasEntrenadas:       0,
         consecutivasSinDescanso: 0,
       },
@@ -96,8 +101,9 @@ export function SeasonEnd() {
       resultadosTemporada: [],
       historialSemanas:    [],
     }
-    gs.setCurrentSkater(nextSkater)
-    gs.setCurrentSeason(nextSeason)
+    // atomic: skater + season change in a single set() so no render observes a
+    // skater aged-up against a still-old season (D3)
+    gs.applyWeekTransition({ skater: nextSkater, season: nextSeason })
     // narrative: clear emitted log so events can re-fire next season
     useNarrativeStore.setState({
       currentEvent: null, lastContext: null,
@@ -116,7 +122,7 @@ export function SeasonEnd() {
   }
 
   // sort competitions by semana for chronological display
-  const competicionesOrdenadas = [...season.resultadosTemporada].sort((a, b) => a.semana - b.semana)
+  const competicionesOrdenadas = [...resultadosTemporada].sort((a, b) => a.semana - b.semana)
 
   // top three most-used activities
   const actividadesMasUsadas = (Object.entries(breakdown.counts) as [ActivityId, number][])
@@ -132,7 +138,7 @@ export function SeasonEnd() {
           <span className="glace-eyebrow">— fin de temporada</span>
           <span className="glace-hairline flex-1" />
           <span className="glace-eyebrow text-content-disabled">
-            temporada {String(season.temporadaNumero).padStart(2, '0')}
+            temporada {String(temporadaNumero).padStart(2, '0')}
           </span>
         </div>
 
@@ -239,7 +245,7 @@ export function SeasonEnd() {
         {/* actions */}
         <footer className="col-span-12 mt-6 flex items-baseline justify-between border-t border-border-subtle pt-6">
           <p className="font-display italic text-base text-content-muted max-w-md">
-            La temporada {season.temporadaNumero + 1} empieza con la patinadora un año mayor,
+            La temporada {temporadaNumero + 1} empieza con la patinadora un año mayor,
             algo más recuperada, y los programas pendientes de revisar.
           </p>
           <div className="flex items-baseline gap-8">
@@ -257,7 +263,7 @@ export function SeasonEnd() {
               className="group flex items-baseline gap-3 text-content-primary hover:text-ice-200 transition-colors"
             >
               <span className="font-display text-3xl">
-                comenzar temporada {String(season.temporadaNumero + 1).padStart(2, '0')}
+                comenzar temporada {String(temporadaNumero + 1).padStart(2, '0')}
               </span>
               <span className="text-2xl text-ice-300 transition-transform duration-300 group-hover:translate-x-2">→</span>
             </button>
