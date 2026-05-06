@@ -8,6 +8,7 @@ import {
   applyAttributeGains,
   applyBondDecay,
   applyFatigueRecovery,
+  forceOverworkInjury,
   maskInjuredSchedule,
   rollFallInjury,
   rollWeeklyInjury,
@@ -28,7 +29,6 @@ import {
 } from '@/features/rivals'
 import {
   applyFinancialPressureSideEffects,
-  applyPrizeMoney,
   computeCompetitionEconomy,
   computeFinancialPressureState,
   computeWeeklyCashFlowBreakdown,
@@ -37,6 +37,7 @@ import {
 } from '@/features/economy'
 import {
   FATIGUE_BETWEEN_PROGRAMS,
+  FORCED_OVERWORK_THRESHOLD,
   STRESS_AFTER_FALL_INTERPROGRAM,
   WEEKLY_EXPENSE_BASE,
   WEEKLY_INSTALLATION_MAINTENANCE_PER_LEVEL,
@@ -114,6 +115,9 @@ export interface WeekResult {
   programaCortoActualizado: ProgramData | null
   /** FS program after applying cohesion and vínculo-musical updates from training; null when no FS exists */
   programaLibreActualizado: ProgramData | null
+  /** flags emitted during the week (seeds + economic/injury signals); merged into the
+   *  narrative store by the caller. previously this was discarded — see auditoría B4 (C1). */
+  narrativeFlags:           Record<string, boolean | number | string>
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -437,12 +441,19 @@ export async function runWeek(
 
   // 3. apply training effects to skater (clamp before commit)
   skater = applyAttributeGains(skater, effects.attributeGains, 100)
+  // overwork counter: reset on any `descanso` slot, else +1. consumed by
+  // forceOverworkInjury below when reaches FORCED_OVERWORK_THRESHOLD.
+  const restedThisWeek = effectiveSchedule.slots.some(s => s.activityId === 'descanso')
+  const nextConsecutivasSinDescanso = restedThisWeek
+    ? 0
+    : skater.weeklyState.consecutivasSinDescanso + 1
   const nextWeekly: WeeklyState = {
     ...skater.weeklyState,
     fatigaAcumulada: clamp(skater.weeklyState.fatigaAcumulada + effects.fatigueDelta),
     estres:          clamp(skater.weeklyState.estres          + effects.stressDelta),
     vinculo:         clamp(skater.weeklyState.vinculo         + effects.bondDelta),
-    semanasEntrenadas: skater.weeklyState.semanasEntrenadas + 1,
+    semanasEntrenadas:       skater.weeklyState.semanasEntrenadas + 1,
+    consecutivasSinDescanso: nextConsecutivasSinDescanso,
   }
   skater = { ...skater, weeklyState: nextWeekly }
 
@@ -453,26 +464,49 @@ export async function runWeek(
   // 5. fatigue recovery from installations
   skater = applyFatigueRecovery(skater, computeRecoveryBonus(club))
 
-  // 5b. weekly injury roll — only when the skater is currently healthy.
-  // training has already been applied so fatigue is current; the roll uses
-  // effects.injuryRoll (a deterministic rng draw produced by the training
-  // service) so re-running runWeek with the same seed is reproducible.
+  // 5b. injury phase — first the GDD hard rule (5+ semanas sin descanso forces a
+  // guaranteed injury), then the probabilistic roll if still healthy. training
+  // has already been applied so fatigue is current; the probabilistic roll uses
+  // effects.injuryRoll so re-running runWeek with the same seed is reproducible.
   let newInjurySeverity: InjurySeverity | null = null
+  let forcedByOverwork = false
   if (!skater.weeklyState.currentInjury) {
     const fisioterapiaLevel = club.instalaciones.find(i => i.id === 'fisioterapia')?.nivel ?? 0
-    const newInjury = rollWeeklyInjury(skater, effectiveSchedule, {
-      trigger:           effects.injuryRoll,
-      rng,
-      currentWeek:       season.semanaActual,
-      fisioterapiaLevel,
-      tensions:          effects.tensionsTriggered,
-    })
-    if (newInjury) {
-      skater = {
-        ...skater,
-        weeklyState: { ...skater.weeklyState, currentInjury: newInjury },
+    if (skater.weeklyState.consecutivasSinDescanso >= FORCED_OVERWORK_THRESHOLD) {
+      const forced = forceOverworkInjury(skater, {
+        currentWeek: season.semanaActual,
+        fisioterapiaLevel,
+        rng,
+      })
+      if (forced) {
+        skater = {
+          ...skater,
+          weeklyState: {
+            ...skater.weeklyState,
+            currentInjury:           forced,
+            // reset the counter so the rule does not retrigger every week
+            consecutivasSinDescanso: 0,
+          },
+        }
+        newInjurySeverity = forced.severity
+        forcedByOverwork = true
       }
-      newInjurySeverity = newInjury.severity
+    }
+    if (!skater.weeklyState.currentInjury) {
+      const newInjury = rollWeeklyInjury(skater, effectiveSchedule, {
+        trigger:           effects.injuryRoll,
+        rng,
+        currentWeek:       season.semanaActual,
+        fisioterapiaLevel,
+        tensions:          effects.tensionsTriggered,
+      })
+      if (newInjury) {
+        skater = {
+          ...skater,
+          weeklyState: { ...skater.weeklyState, currentInjury: newInjury },
+        }
+        newInjurySeverity = newInjury.severity
+      }
     }
   }
 
@@ -482,6 +516,23 @@ export async function runWeek(
   }
   for (const seed of effects.eventSeeds) seededFlags[`seed:${seed}`] = true
 
+  // 6b. championship-eve flag — emitted the week BEFORE a Mundial / Europeo /
+  // Final del Grand Prix / Olímpico, so events can gate on the buildup week
+  // without parsing the calendar themselves.
+  const nextChampionshipSlot = season.calendario.find(
+    c =>
+      c.semana === season.semanaActual + 1 &&
+      (c.tipo === 'mundial' ||
+        c.tipo === 'europeo' ||
+        c.tipo === 'finalGrandprix' ||
+        c.tipo === 'olimpico'),
+  )
+  if (nextChampionshipSlot) {
+    seededFlags['dia_antes_campeonato'] = true
+    if (nextChampionshipSlot.tipo === 'mundial') seededFlags['dia_antes_mundial'] = true
+  }
+  if (forcedByOverwork) seededFlags['lesion_por_sobrecarga'] = true
+
   const weeklyCtx: NarrativeContext = {
     ...ctx.narrativeContext,
     skater,
@@ -489,10 +540,9 @@ export async function runWeek(
     narrativeFlags: seededFlags,
   }
 
-  // 7. event selection placeholder. NarrativeContext does not carry the pool,
-  // so runWeek itself never selects an event — callers that need selection
-  // use runWeekWithPool below. we still build weeklyCtx so the wrapper has
-  // the exact post-training context to evaluate conditions against.
+  // 7. event selection placeholder. runWeek itself never selects an event;
+  // runWeekWithPool below consumes seededFlags via the WeekResult.narrativeFlags
+  // field to evaluate event conditions with the up-to-date context.
   void weeklyCtx
   const triggeredEvent = null as NarrativeEvent | null
 
@@ -570,9 +620,6 @@ export async function runWeek(
     ...club,
     presupuestoReservas: club.presupuestoReservas + cashDelta,
   }
-  // applyPrizeMoney is now a no-op for this orchestrator (prize already credited
-  // through cashDelta) — kept exported for any caller that needs it standalone.
-  void applyPrizeMoney
   // weekly expenses = actual outflow (base + installation maintenance)
   const weeklyExpenses = computeWeeklyExpenses(club)
   const pressureState = computeFinancialPressureState(club, weeklyExpenses)
@@ -636,6 +683,7 @@ export async function runWeek(
     economyBreakdown,
     programaCortoActualizado,
     programaLibreActualizado,
+    narrativeFlags: seededFlags,
   }
 }
 
@@ -656,12 +704,15 @@ export async function runWeekWithPool(
 
   // re-evaluate only the event-selection step with the provided pool. this is
   // safe because weekService does not apply event effects — just picks one.
+  // narrativeFlags must come from the result (they include this week's seeds
+  // and economic/injury signals); ctx.narrativeContext.narrativeFlags is stale.
   const picked = selectWeeklyEvent(
     eventPool,
     {
       ...ctx.narrativeContext,
-      skater: result.skater,
-      season: result.season,
+      skater:         result.skater,
+      season:         result.season,
+      narrativeFlags: result.narrativeFlags,
     },
     rng,
   )

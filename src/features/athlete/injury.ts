@@ -189,6 +189,30 @@ export function rollFallInjury(
   }
 }
 
+/**
+ * forced overwork injury — GDD cap. 3: 5+ semanas seguidas sin ranura `descanso`
+ * disparan una lesión garantizada. severidad mínima `leve`; con historial alto o
+ * rasgo `cuerpo-fragil` el `pickSeverity` la sube. nunca pisa una lesión activa.
+ *
+ * el orquestador llama esto ANTES del rollWeeklyInjury probabilístico cuando el
+ * contador `consecutivasSinDescanso` alcanza FORCED_OVERWORK_THRESHOLD.
+ */
+export function forceOverworkInjury(
+  skater: SkaterData,
+  options: { currentWeek: number; fisioterapiaLevel?: number; rng?: () => number },
+): InjuryRecord | null {
+  if (skater.weeklyState.currentInjury) return null
+  const rng = options.rng ?? Math.random
+  const severity = pickSeverity(skater, rng)
+  const weeks = pickRecoveryWeeks(severity, options.fisioterapiaLevel ?? 0, rng)
+  return {
+    injuredAtWeek:          options.currentWeek,
+    recoveryWeeksTotal:     weeks,
+    recoveryWeeksRemaining: weeks,
+    severity,
+  }
+}
+
 // ─── tick & recovery ─────────────────────────────────────────────────────────
 
 export interface RecoveryOutcome {

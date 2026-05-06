@@ -505,3 +505,210 @@ describe('runWeek — F: mutación de rasgo', () => {
     expect(outcome.mutatedTrait?.to).toBe('auto-exigencia-destructiva')
   })
 })
+
+// ─── auditoría B4 — regresión sobre flags semanales y reglas duras ────────────
+
+function makeHistorialSemana(semana: number, ranuras: string[]): {
+  semana: number
+  fase: 'Construccion'
+  ranuraEjecutadas: string[]
+  vinculoDelta: number
+  fatigueDelta: number
+  stresDelta: number
+  eventoNarrativoId: null
+  competicionResultadoId: null
+} {
+  return {
+    semana,
+    fase: 'Construccion',
+    ranuraEjecutadas: ranuras,
+    vinculoDelta: 0,
+    fatigueDelta: 0,
+    stresDelta: 0,
+    eventoNarrativoId: null,
+    competicionResultadoId: null,
+  }
+}
+
+describe('runWeek — G: propagación de flags semanales (auditoría B4 C1)', () => {
+  it('selecciona evento condicionado por seed:cuerpo_al_limite cuando la tensión está activa', async () => {
+    // historial: 4 semanas seguidas con todos técnicos → activa tecnico_vs_descanso
+    // (la 5ª semana se ejecuta dentro de runWeek y el seed se inyecta antes de la
+    // selección de evento). reproduce el bug C1: si los flags no se propagan, el
+    // evento queda fuera del filtro y el test falla con triggeredEvent === null.
+    const historial = [1, 2, 3, 4].map(n =>
+      makeHistorialSemana(n, ['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico']),
+    )
+    const season = makeSeason({ semanaActual: 5, historialSemanas: historial })
+    const eventoSeed: NarrativeEvent = {
+      id:     'ev-overload',
+      tipo:   'cotidiano',
+      titulo: 'Demasiada pista',
+      descripcion: 'el cuerpo del patinador empieza a quejarse',
+      condiciones: { flagsRequeridos: ['seed:cuerpo_al_limite'] },
+      opciones: [{ id: 'a', texto: 'reflexionar', efectos: { vinculoDelta: 1 } }],
+    }
+    const skater = makeSkater()
+    const ctx = makeContext({
+      skater,
+      season,
+      schedule: schedule(['tecnico', 'tecnico', 'tecnico', 'tecnico', 'tecnico']),
+      narrativeContext: {
+        skater,
+        season,
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+    })
+
+    const result = await runWeekWithPool(ctx, [eventoSeed], fixedRng(0.1))
+
+    expect(result.tensionsTriggered).toContain('tecnico_vs_descanso')
+    expect(result.narrativeFlags['seed:cuerpo_al_limite']).toBe(true)
+    expect(result.triggeredEvent?.id).toBe('ev-overload')
+  })
+
+  it('emite dia_antes_campeonato y dia_antes_mundial la semana previa al Mundial', async () => {
+    const season = makeSeason({
+      semanaActual: 19,
+      calendario: [{
+        semana:            20,
+        nombreCompeticion: 'Mundial Test',
+        tipo:              'mundial',
+        clasificado:       true,
+      }],
+    })
+    const ctx = makeContext({
+      season,
+      narrativeContext: {
+        skater:         makeSkater(),
+        season,
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+    })
+
+    const result = await runWeek(ctx, fixedRng(0.5))
+
+    expect(result.narrativeFlags['dia_antes_campeonato']).toBe(true)
+    expect(result.narrativeFlags['dia_antes_mundial']).toBe(true)
+  })
+
+  it('emite dia_antes_campeonato pero NO dia_antes_mundial cuando la siguiente es Europeo', async () => {
+    const season = makeSeason({
+      semanaActual: 14,
+      calendario: [{
+        semana:            15,
+        nombreCompeticion: 'Europeo Test',
+        tipo:              'europeo',
+        clasificado:       true,
+      }],
+    })
+    const ctx = makeContext({
+      season,
+      narrativeContext: {
+        skater:         makeSkater(),
+        season,
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+    })
+
+    const result = await runWeek(ctx, fixedRng(0.5))
+
+    expect(result.narrativeFlags['dia_antes_campeonato']).toBe(true)
+    expect(result.narrativeFlags['dia_antes_mundial']).toBeUndefined()
+  })
+})
+
+describe('runWeek — H: regla dura de sobrecarga (auditoría B4 M2)', () => {
+  it('incrementa consecutivasSinDescanso cuando no hay ranura descanso', async () => {
+    const ctx = makeContext({
+      schedule: schedule(['tecnico', 'tecnico', 'mental', 'ensayo', 'dialogo']),
+    })
+    const result = await runWeek(ctx, fixedRng(0.99))
+    expect(result.skater.weeklyState.consecutivasSinDescanso).toBe(1)
+  })
+
+  it('resetea consecutivasSinDescanso cuando hay ranura descanso', async () => {
+    const skater = makeSkater({
+      weeklyState: { ...DEFAULT_SKATER_DATA.weeklyState, consecutivasSinDescanso: 4 },
+    })
+    const ctx = makeContext({
+      skater,
+      schedule: schedule(['tecnico', 'descanso', 'mental', null, null]),
+      narrativeContext: {
+        skater,
+        season:         makeSeason(),
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+    })
+    const result = await runWeek(ctx, fixedRng(0.99))
+    expect(result.skater.weeklyState.consecutivasSinDescanso).toBe(0)
+  })
+
+  it('fuerza una lesión cuando consecutivasSinDescanso alcanza el umbral', async () => {
+    // partimos en 4: tras esta semana sin descanso pasa a 5 — pero la regla
+    // se evalúa con el contador YA actualizado, así que el umbral 5 dispara
+    // la lesión forzada incluso si el roll probabilístico es 0.99 (no daña).
+    const skater = makeSkater({
+      weeklyState: { ...DEFAULT_SKATER_DATA.weeklyState, consecutivasSinDescanso: 4 },
+    })
+    const ctx = makeContext({
+      skater,
+      schedule: schedule(['tecnico', 'tecnico', 'mental', 'ensayo', 'dialogo']),
+      narrativeContext: {
+        skater,
+        season:         makeSeason(),
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+    })
+
+    const result = await runWeek(ctx, fixedRng(0.99))
+
+    expect(result.skater.weeklyState.currentInjury).not.toBeNull()
+    expect(result.newInjurySeverity).not.toBeNull()
+    expect(result.narrativeFlags['lesion_por_sobrecarga']).toBe(true)
+    // contador reseteado tras la lesión forzada para evitar retrigger inmediato
+    expect(result.skater.weeklyState.consecutivasSinDescanso).toBe(0)
+  })
+
+  it('NO fuerza lesión bajo el umbral aunque el roll probabilístico sea favorable', async () => {
+    const skater = makeSkater({
+      weeklyState: { ...DEFAULT_SKATER_DATA.weeklyState, consecutivasSinDescanso: 2 },
+    })
+    const ctx = makeContext({
+      skater,
+      schedule: schedule(['tecnico', 'tecnico', 'mental', 'ensayo', 'dialogo']),
+      narrativeContext: {
+        skater,
+        season:         makeSeason(),
+        narrativeFlags: {},
+        emittedEvents:  [],
+      },
+    })
+    // rng=0.99 hace que rollWeeklyInjury falle el trigger casi siempre
+    const result = await runWeek(ctx, fixedRng(0.99))
+    expect(result.narrativeFlags['lesion_por_sobrecarga']).toBeUndefined()
+  })
+})
+
+describe('runWeek — I: crisis_financiera_activa no es pegajosa (auditoría B4 m3)', () => {
+  it('declara explícitamente crisis_financiera_activa=false cuando la presión es estable', async () => {
+    const ctx = makeContext()
+    const result = await runWeek(ctx, fixedRng(0.5))
+    // por defecto el club arranca con presupuesto suficiente → estable
+    expect(result.pressureState).toBe('estable')
+    expect(result.narrativeFlags['crisis_financiera_activa']).toBe(false)
+  })
+
+  it('declara crisis_financiera_activa=true cuando el presupuesto está en negativo profundo', async () => {
+    const club = makeClub({ presupuestoReservas: -500 })
+    const ctx = makeContext({ club })
+    const result = await runWeek(ctx, fixedRng(0.5))
+    expect(result.pressureState).toBe('crisis')
+    expect(result.narrativeFlags['crisis_financiera_activa']).toBe(true)
+  })
+})

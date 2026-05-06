@@ -35,6 +35,9 @@ interface NarrativeState {
   /** publishes an externally-selected event into the store (used by the week orchestrator,
    *  which selects events through runWeekWithPool but cannot mutate this store directly) */
   commitWeeklyEvent: (event: NarrativeEvent, ctx: NarrativeContext) => void
+  /** merges the week's emitted flags (seeds + economic/injury signals) into the
+   *  persistent narrativeFlags. callers pass result.narrativeFlags from runWeekWithPool. */
+  mergeWeeklyFlags: (flags: Record<string, boolean | number | string>) => void
   triggerMoment: (trigger: MomentoTrigger, ctx: NarrativeContext, rng?: () => number) => NarrativeEvent | null
   resolveChoice: (optionId: string, rng?: () => number) => EventOutcome | MomentOutcome | null
   resetEvent:    () => void
@@ -161,6 +164,14 @@ export const useNarrativeStore = create<NarrativeState>()(
           'narrative/resolveEvent',
         )
         return outcome
+      },
+
+      mergeWeeklyFlags: (flags) => {
+        set(
+          { narrativeFlags: { ...get().narrativeFlags, ...flags } },
+          false,
+          'narrative/mergeWeeklyFlags',
+        )
       },
 
       resetEvent: () => {

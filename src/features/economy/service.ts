@@ -143,16 +143,23 @@ export function computeFinancialPressureState(
 
 /**
  * skater-side consequences of the current financial pressure.
- * estable/leve: no effect. visible: estres +3. crisis: estres +5 + narrative flag.
+ * estable/leve: no stress delta but flag is cleared. visible: estres +3. crisis:
+ * estres +5 + flag set. the flag always reflects the CURRENT state (not sticky)
+ * so events condicionados a salida de crisis funcionen — ver auditoría B4 (m3).
  * returns a partial SkaterData ready to merge into the store action.
  */
 export function applyFinancialPressureSideEffects(
   skater: SkaterData,
   state: FinancialPressureState,
 ): Partial<SkaterData> & {
-  narrativeFlags?: Record<string, boolean>
+  narrativeFlags: Record<string, boolean>
 } {
-  if (state === 'estable' || state === 'leve') return {}
+  // flag mirrors the live state so it never stays stuck on `true` after recovery
+  const narrativeFlags = { crisis_financiera_activa: state === 'crisis' }
+
+  if (state === 'estable' || state === 'leve') {
+    return { narrativeFlags }
+  }
 
   const stressDelta =
     state === 'crisis'
@@ -163,14 +170,7 @@ export function applyFinancialPressureSideEffects(
     ...skater.weeklyState,
     estres: clamp01to100(skater.weeklyState.estres + stressDelta),
   }
-  const patch: Partial<SkaterData> & {
-    narrativeFlags?: Record<string, boolean>
-  } = { weeklyState: nextWeekly }
-
-  if (state === 'crisis') {
-    patch.narrativeFlags = { crisis_financiera_activa: true }
-  }
-  return patch
+  return { weeklyState: nextWeekly, narrativeFlags }
 }
 
 // ─── 4. sponsor review ────────────────────────────────────────────────────────
@@ -263,6 +263,11 @@ function competitionFailsSponsor(
  * transfers ISU prize money to the club reserves for any qualifying position
  * (some events pay down to 6th place). returns a new ClubData — original is
  * not mutated. non-paying positions leave the club untouched.
+ *
+ * @internal NOT USED by `runWeek` — the prize is already credited inside the
+ * weekly cash-flow breakdown via `computeCompetitionEconomy`. callers must NOT
+ * combine this with `runWeek` or the prize will be double-counted. kept exported
+ * for standalone economy tests and for any future legacy migration path.
  */
 export function applyPrizeMoney(
   club: ClubData,

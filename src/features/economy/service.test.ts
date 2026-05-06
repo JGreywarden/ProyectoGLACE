@@ -137,23 +137,27 @@ describe('computeFinancialPressureState', () => {
 // ─── applyFinancialPressureSideEffects ────────────────────────────────────────
 
 describe('applyFinancialPressureSideEffects', () => {
-  it('returns an empty patch when state is estable', () => {
+  it('returns no weeklyState patch and clears crisis flag when state is estable', () => {
     const skater = makeSkater()
-    expect(applyFinancialPressureSideEffects(skater, 'estable')).toEqual({})
+    const patch = applyFinancialPressureSideEffects(skater, 'estable')
+    expect(patch.weeklyState).toBeUndefined()
+    expect(patch.narrativeFlags).toEqual({ crisis_financiera_activa: false })
   })
 
-  it('returns an empty patch when state is leve', () => {
+  it('returns no weeklyState patch and clears crisis flag when state is leve', () => {
     const skater = makeSkater()
-    expect(applyFinancialPressureSideEffects(skater, 'leve')).toEqual({})
+    const patch = applyFinancialPressureSideEffects(skater, 'leve')
+    expect(patch.weeklyState).toBeUndefined()
+    expect(patch.narrativeFlags).toEqual({ crisis_financiera_activa: false })
   })
 
-  it('adds exactly 3 to estres when state is visible', () => {
+  it('adds exactly 3 to estres and clears crisis flag when state is visible', () => {
     const skater = makeSkater()
     const baseline = skater.weeklyState.estres
     const patch = applyFinancialPressureSideEffects(skater, 'visible')
     expect(patch.weeklyState?.estres).toBe(baseline + PRESION_VISIBLE_STRESS_WEEKLY)
     expect(patch.weeklyState?.estres).toBe(baseline + 3)
-    expect(patch.narrativeFlags).toBeUndefined()
+    expect(patch.narrativeFlags).toEqual({ crisis_financiera_activa: false })
   })
 
   it('adds 5 estres and sets crisis flag when state is crisis', () => {

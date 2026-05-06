@@ -212,6 +212,9 @@ export interface WeeklyState {
   estres:            number
   /** cumulative weeks of training since season start */
   semanasEntrenadas: number
+  /** consecutive weeks without a `descanso` slot; resets to 0 on rest. at 5+ a
+   *  light injury is forced (GDD cap. 3 — protección anti-sobrecarga). */
+  consecutivasSinDescanso: number
   /** active injury record; null when skater is healthy */
   currentInjury:     InjuryRecord | null
 }
@@ -969,6 +972,8 @@ export function validateSkaterData(data: unknown): data is SkaterData {
   if (!isPlainObject(ws)) return false
   if (!hasUnitScoreFields(ws, WEEKLY_UNIT_KEYS)) return false
   if (!isNonNegative(ws['semanasEntrenadas'])) return false
+  // accept legacy saves without consecutivasSinDescanso (Fase 0/1) — they default to 0
+  if ('consecutivasSinDescanso' in ws && !isNonNegative(ws['consecutivasSinDescanso'])) return false
   if (!('currentInjury' in ws)) return false
   const injury = ws['currentInjury']
   if (injury !== null) {
@@ -1059,11 +1064,12 @@ export const DEFAULT_SKATER_DATA: SkaterData = {
   },
   traits:     [],
   weeklyState: {
-    vinculo:           0,
-    fatigaAcumulada:   10,
-    estres:            15,
-    semanasEntrenadas: 0,
-    currentInjury:     null,
+    vinculo:                 0,
+    fatigaAcumulada:         10,
+    estres:                  15,
+    semanasEntrenadas:       0,
+    consecutivasSinDescanso: 0,
+    currentInjury:           null,
   },
   retiredAt: null,
 }
