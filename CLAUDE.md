@@ -412,6 +412,29 @@ Cuando dos módulos definen interfaces con el mismo nombre pero forma distinta (
 
 Nunca llamar directamente a `localStorage`. Usar siempre `@/utils/safeStorage`. Cualquier código que asuma que el storage está disponible debe consultar `safeStorage.available` primero. Los fallos de storage (Safari privado, cookies bloqueadas, iframe sin acceso) no deben romper el bootstrap: `safeStorage` devuelve `false`/`null` silenciosamente. La UI consulta `useSaveStore.storageAvailable` para mostrar un banner "Modo sin guardado".
 
+API real expuesta por el módulo:
+
+```ts
+interface SafeStorage {
+  readonly available: boolean
+  get:    (key: string) => string | null    // null si !available o si lanza
+  set:    (key: string, value: string) => boolean   // false si !available o si lanza
+  remove: (key: string) => void              // ignora silenciosamente fallos mid-session
+}
+```
+
+**Fase 5 (planificado).** Antes de Fase 6 (eventos generados por Claude API) la persistencia migrará de `localStorage` a IndexedDB para evitar el techo de ~5 MB por origen. La sustitución será un wrapper `safeIDB` con la misma firma `{available, get, set, remove}`, de modo que el cambio se localice en `saveService.ts` y los stores no se enteren. El framework de migraciones de saves (`CURRENT_SAVE_VERSION` + `MIGRATIONS` en `saveService.ts`) ya es agnóstico al backend de storage: solo cambia el origen de los bytes, no el contenido.
+
+### D2.1. Migraciones de save
+
+El esquema de `SaveFile` evoluciona con el juego. Cualquier cambio que rompa la forma de un save (campo nuevo no opcional, renombrado, formato distinto) **obliga** a:
+
+1. Subir `CURRENT_SAVE_VERSION` en `@/services/saveService` en una unidad.
+2. Registrar un paso `MIGRATIONS[fromVersion] = (data) => transformedData` que transforme un save de la versión anterior a la nueva forma.
+3. Actualizar los validadores per-campo del bloque final de `migrateSave` para reflejar el nuevo schema.
+
+`migrateSave` rechaza con throw cualquier save proveniente de un cliente más nuevo (`saveVersion > CURRENT_SAVE_VERSION`) y cualquier versión antigua para la que falte un paso registrado. No es admisible "tolerar silenciosamente" un campo nuevo añadiendo solo un default opcional: si el campo es load-bearing, se versiona; si es opcional, vive como tal en la interfaz `SaveFile` y `migrateSave` lo backfilla. Los saves de Fase 0 (con campos opcionales aún en blanco) **no son** migraciones — siguen siendo v1.
+
 ### D3. Atomicidad cross-store
 
 Cuando una acción de dominio toque más de una entidad (skater + season, coach + club, etc.), usar `gameStore.applyWeekTransition({ skater?, coach?, club?, season? })` o crear una acción compuesta equivalente en un solo `set(...)`. Nunca encadenar dos setters individuales para estado que debe verse consistente en un render; un re-render intermedio puede mostrar al jugador un estado imposible.

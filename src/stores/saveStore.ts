@@ -65,6 +65,9 @@ export const useSaveStore = create<SaveStoreState>()(
           currentSeason:   gs.currentSeason,
           isFirstSession:  gs.isFirstSession,
           narrativeFlags:  ns.narrativeFlags,
+          // dialogueHistory and generatedEvents land in fase 6 (Claude API); the
+          // SaveFile slots and per-element validators are already in place so
+          // wire these up to narrativeStore the moment that feature exists.
           dialogueHistory: [],
           emittedEvents:   ns.emittedEvents,
           generatedEvents: [],
