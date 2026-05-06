@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { save, load, deleteSave, migrateSave, type GameStateSnapshot } from './saveService'
+import {
+  save,
+  load,
+  deleteSave,
+  getMetadata,
+  migrateSave,
+  CURRENT_SAVE_VERSION,
+  type GameStateSnapshot,
+} from './saveService'
 import {
   DEFAULT_SKATER_DATA,
   DEFAULT_COACH_DATA,
@@ -79,8 +87,28 @@ describe('load falls back to backup when primary is corrupt', () => {
 })
 
 describe('migrateSave validation', () => {
-  it('throws on unknown saveVersion', () => {
-    expect(() => migrateSave({ saveVersion: 99 })).toThrow()
+  it('rejects saves from a newer client (saveVersion > CURRENT)', () => {
+    expect(() => migrateSave({ saveVersion: CURRENT_SAVE_VERSION + 1, fechaGuardado: 'x' }))
+      .toThrow(/más nueva que la soportada/)
+  })
+
+  it('rejects malformed saveVersion (missing or non-numeric)', () => {
+    expect(() => migrateSave({ fechaGuardado: 'x' })).toThrow(/formato no reconocido/)
+    expect(() => migrateSave({ saveVersion: '1', fechaGuardado: 'x' })).toThrow(/formato no reconocido/)
+  })
+
+  it('rejects saveVersion that is not a positive integer', () => {
+    expect(() => migrateSave({ saveVersion: 0, fechaGuardado: 'x' })).toThrow(/saveVersion inválido/)
+    expect(() => migrateSave({ saveVersion: 1.5, fechaGuardado: 'x' })).toThrow(/saveVersion inválido/)
+  })
+
+  it('rejects saveVersion older than current when no migration is registered', () => {
+    // CURRENT is 1 today, so this scenario is hypothetical until v2 lands; the
+    // intent is to lock in the contract: an older save without a migration step
+    // must throw cleanly instead of silently passing through.
+    if (CURRENT_SAVE_VERSION < 2) return
+    expect(() => migrateSave({ saveVersion: CURRENT_SAVE_VERSION - 1, fechaGuardado: 'x' }))
+      .toThrow(/no hay migración registrada/)
   })
 
   it('throws when skater fails domain validation', () => {
@@ -145,6 +173,54 @@ describe('confirmedPrograms persistence', () => {
       skater: null, coach: null, club: null, season: null,
       confirmedPrograms: { sk1: [{ id: 'broken', notAProgram: true }] },
     })).toThrow(/confirmedPrograms/)
+  })
+})
+
+describe('slot isolation', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('corrupting both primary and backup of slot 1 does not affect slot 2', () => {
+    save(2, snapshot({ currentSkater: { ...DEFAULT_SKATER_DATA, id: 'sk2', name: 'Bea' } }))
+
+    window.localStorage.setItem('glace_save_1',     'not json at all')
+    window.localStorage.setItem('glace_save_1_bak', '{"saveVersion":1,"fechaGuardado":"x","skater":{"technical":{"saltos":"high"}}}')
+
+    expect(load(1).reason).toBe('corrupt')
+
+    const meta2 = getMetadata(2)
+    expect(meta2?.nombrePatinador).toBe('Bea')
+
+    const result2 = load(2)
+    expect(result2.reason).toBe('ok')
+    expect(result2.file?.skater?.name).toBe('Bea')
+  })
+})
+
+describe('getMetadata sanitization', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+  })
+
+  it('returns null when nothing is stored at the slot', () => {
+    expect(getMetadata(1)).toBeNull()
+  })
+
+  it('clamps out-of-range semanaActual / temporadaNumero to defaults', () => {
+    // a partially-corrupt save passes the minimal guards (saveVersion + fechaGuardado)
+    // but carries garbage in season fields. metadata must NOT surface those values.
+    window.localStorage.setItem('glace_save_1', JSON.stringify({
+      saveVersion:   1,
+      fechaGuardado: '2026-05-07T00:00:00Z',
+      season: { semanaActual: 999, temporadaNumero: -3 },
+      skater: { name: 'Ana' },
+    }))
+    const meta = getMetadata(1)
+    expect(meta).not.toBeNull()
+    expect(meta!.semanaActual).toBe(1)
+    expect(meta!.temporadaNumero).toBe(1)
+    expect(meta!.nombrePatinador).toBe('Ana')
   })
 })
 

@@ -1,5 +1,11 @@
 // save service — pure functions for game persistence via safeStorage
 // no React, no Zustand; call from saveStore.ts
+//
+// fase 5 plan: when slot payloads start exceeding ~1 MB (driven by Claude-generated
+// events in fase 6) this module will swap safeStorage for a safeIDB wrapper with
+// the same {available, get, set, remove} signature. the migration framework below
+// (CURRENT_SAVE_VERSION + MIGRATIONS) is intentionally storage-agnostic so the
+// switch only touches the imports here, not call sites.
 
 import { type SkaterData, validateSkaterData } from '@/types'
 import { type CoachData,  validateCoachData }  from '@/types'
@@ -39,6 +45,29 @@ const BACKUP_KEYS: Record<SaveSlot, string> = {
 // conservative threshold — localStorage is ~5 MB per origin
 const SIZE_WARN_BYTES = 4 * 1024 * 1024
 
+/**
+ * current schema version. bump (and register a migration in MIGRATIONS) every
+ * time SaveFile gains a non-optional field, drops a field, or changes shape in
+ * a way that an older save would no longer satisfy after JSON.parse.
+ */
+export const CURRENT_SAVE_VERSION = 1 as const
+type CurrentSaveVersion = typeof CURRENT_SAVE_VERSION
+
+/**
+ * a single migration step transforms a save object FROM version `fromVersion`
+ * INTO the shape expected at `fromVersion + 1`. it operates on the raw parsed
+ * object (not a typed SaveFile) so it can rename fields, drop them or backfill
+ * defaults. the field-level validators run AFTER all migrations have been applied.
+ *
+ * register a step here when you bump CURRENT_SAVE_VERSION:
+ *   1: (data) => ({ ...data, newField: defaultForNewField })   // 1 → 2
+ */
+const MIGRATIONS: Record<number, (data: Record<string, unknown>) => Record<string, unknown>> = {
+  // empty: v1 is the initial release. legacy fase-0 saves (missing optional
+  // fields like confirmedPrograms or rivalsPool) are still v1 — defaults are
+  // backfilled in the per-field validation block at the bottom of migrateSave.
+}
+
 // ─── types ────────────────────────────────────────────────────────────────────
 
 /** a single line of coach–skater dialogue, persisted for narrative continuity */
@@ -52,7 +81,7 @@ export interface DialogueLine {
 
 /** complete serialized game state for one save slot */
 export interface SaveFile {
-  saveVersion:     1
+  saveVersion:     CurrentSaveVersion
   fechaGuardado:   string  // ISO-8601
   isFirstSession:  boolean
   skater:          SkaterData | null
@@ -135,7 +164,7 @@ function estimateSize(json: string): number {
 
 function buildSaveFile(snapshot: GameStateSnapshot): SaveFile {
   return {
-    saveVersion:     1,
+    saveVersion:     CURRENT_SAVE_VERSION,
     fechaGuardado:   new Date().toISOString(),
     isFirstSession:  snapshot.isFirstSession,
     skater:          snapshot.currentSkater,
@@ -176,11 +205,11 @@ function validateConfirmedPrograms(raw: unknown): Record<string, ProgramData[]> 
   return out
 }
 
-/** minimal guard — just enough to reject completely invalid payloads */
-function isSaveFile(data: unknown): data is SaveFile {
+/** minimal guard — payload must be an object with a numeric version and a date string */
+function isSaveLike(data: unknown): data is { saveVersion: number; fechaGuardado: string } {
   if (typeof data !== 'object' || data === null) return false
   const d = data as Record<string, unknown>
-  return d['saveVersion'] === 1 && typeof d['fechaGuardado'] === 'string'
+  return typeof d['saveVersion'] === 'number' && typeof d['fechaGuardado'] === 'string'
 }
 
 /** type guard for a single DialogueLine — week 1–30, season ≥ 1, non-empty speakerId */
@@ -293,14 +322,20 @@ export function getMetadata(slot: SaveSlot): SaveMetadata | null {
     if (!raw) continue
     try {
       const d = JSON.parse(raw) as Record<string, unknown>
-      if (d['saveVersion'] !== 1 || typeof d['fechaGuardado'] !== 'string') continue
+      // accept any version we know how to migrate; full migration runs only on load()
+      if (typeof d['saveVersion'] !== 'number' || d['saveVersion'] > CURRENT_SAVE_VERSION) continue
+      if (typeof d['fechaGuardado'] !== 'string') continue
       const season = d['season'] as Record<string, unknown> | null | undefined
       const skater = d['skater'] as Record<string, unknown> | null | undefined
+      const semanaRaw    = season?.['semanaActual']
+      const temporadaRaw = season?.['temporadaNumero']
       return {
         fechaGuardado:   d['fechaGuardado'],
-        semanaActual:    typeof season?.['semanaActual']    === 'number' ? season['semanaActual']    : 1,
-        temporadaNumero: typeof season?.['temporadaNumero'] === 'number' ? season['temporadaNumero'] : 1,
-        nombrePatinador: typeof skater?.['name']            === 'string' ? skater['name']            : '',
+        // reject out-of-range numbers up front: a partially-corrupt JSON could carry
+        // semanaActual=999 and we don't want it surfaced in the slot picker.
+        semanaActual:    isIntegerInRange(semanaRaw, 1, 30)                              ? (semanaRaw    as number) : 1,
+        temporadaNumero: isInteger(temporadaRaw) && (temporadaRaw as number) >= 1        ? (temporadaRaw as number) : 1,
+        nombrePatinador: typeof skater?.['name'] === 'string'                            ? (skater['name'] as string) : '',
       }
     } catch {
       continue
@@ -353,17 +388,46 @@ export function generateSessionSummary(save: SaveFile): SessionSummary {
 
 /**
  * normalizes a raw parsed object into a valid SaveFile.
- * each non-null entity is validated before being accepted — any failure throws
- * so that tryParse() falls back to the backup.
- * extend this function to handle format migrations when saveVersion increases.
+ *
+ * stage 1: walk the MIGRATIONS chain from data.saveVersion up to CURRENT_SAVE_VERSION,
+ *          applying each step in order (e.g. v1 → v2 → v3). throws if an older
+ *          version has no registered migration, or if data is from a newer client.
+ * stage 2: validate every non-null entity against its domain validator. any
+ *          failure throws so that tryParse() falls back to the backup slot.
+ *
+ * to introduce a new schema version: bump CURRENT_SAVE_VERSION, add the
+ * fromVersion → fromVersion+1 step to MIGRATIONS, and update the validators
+ * below to match the new shape.
  */
 export function migrateSave(data: unknown): SaveFile {
-  if (!isSaveFile(data)) {
-    throw new Error('migrateSave: formato no reconocido o versión no soportada')
+  if (!isSaveLike(data)) {
+    throw new Error('migrateSave: formato no reconocido (saveVersion o fechaGuardado ausentes)')
   }
-  // isSaveFile narrowed `data` to SaveFile; cast via unknown to access raw fields
-  // (SaveFile has no index signature, so Record<string, unknown> requires a two-step cast)
-  const d = data as unknown as Record<string, unknown>
+
+  let current  = data as unknown as Record<string, unknown>
+  let version  = data.saveVersion
+
+  if (!Number.isInteger(version) || version < 1) {
+    throw new Error(`migrateSave: saveVersion inválido (${version})`)
+  }
+  if (version > CURRENT_SAVE_VERSION) {
+    throw new Error(
+      `migrateSave: save de versión ${version} más nueva que la soportada (${CURRENT_SAVE_VERSION}); ` +
+      `actualiza el cliente`,
+    )
+  }
+
+  while (version < CURRENT_SAVE_VERSION) {
+    const step = MIGRATIONS[version]
+    if (!step) {
+      throw new Error(`migrateSave: no hay migración registrada desde versión ${version}`)
+    }
+    current = step(current)
+    version += 1
+  }
+
+  // current is now in the v=CURRENT_SAVE_VERSION shape; validate field by field.
+  const d = current
 
   const skater = d['skater'] ?? null
   if (skater !== null && !validateSkaterData(skater)) {
@@ -437,9 +501,11 @@ export function migrateSave(data: unknown): SaveFile {
     generatedEvents = d['generatedEvents']
   }
 
-  // v1 → current: fill in defaults for any fields added after initial release
+  // legacy fase-0 saves: backfill defaults for fields that did not exist at the
+  // time the save was created. these are NOT version migrations — the schema is
+  // still v1, just with fields that were added late as optional.
   return {
-    saveVersion:     1,
+    saveVersion:     CURRENT_SAVE_VERSION,
     fechaGuardado:   typeof d['fechaGuardado']  === 'string'  ? d['fechaGuardado']  : new Date().toISOString(),
     isFirstSession:  typeof d['isFirstSession'] === 'boolean' ? d['isFirstSession'] : false,
     skater:          skater as SkaterData | null,

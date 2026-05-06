@@ -3,6 +3,12 @@
 // blocked globally, quota exhausted). every call is no-throw.
 //
 // never import `localStorage` directly anywhere in the project: route through this module.
+//
+// fase 5 plan: when fase 6 introduces Claude-generated events large enough to push
+// a slot near the 5 MB localStorage ceiling, this module will be paired with (or
+// replaced by) a safeIDB wrapper exposing the SAME {available, get, set, remove}
+// signature. consumers must NEVER rely on the value being a synchronous string
+// beyond what the four methods promise — keep the contract narrow on purpose.
 
 interface SafeStorage {
   /** true only if read and write round-trip successfully at module init */
