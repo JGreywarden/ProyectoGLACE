@@ -4,11 +4,14 @@ import { GameState, useGameStore } from '@/stores/gameStore'
 
 export function SessionResume() {
   const navigate = useNavigate()
-  const { sessionSummary, skater, season } = useGameStore(
+  // narrow projection: subscribe only to the primitive fields we render so that
+  // unrelated mutations (resultadosTemporada, historialSemanas, etc.) skip this render
+  const { sessionSummary, skaterName, temporadaNumero, semanaActual } = useGameStore(
     useShallow((s) => ({
-      sessionSummary: s.sessionSummary,
-      skater:         s.currentSkater,
-      season:         s.currentSeason,
+      sessionSummary:  s.sessionSummary,
+      skaterName:      s.currentSkater?.name,
+      temporadaNumero: s.currentSeason?.temporadaNumero,
+      semanaActual:    s.currentSeason?.semanaActual,
     })),
   )
 
@@ -27,7 +30,7 @@ export function SessionResume() {
     navigate('/', { replace: true })
   }
 
-  if (!skater || !season) {
+  if (!skaterName || temporadaNumero === undefined || semanaActual === undefined) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 glace-vignette px-6 text-center">
         <span className="glace-eyebrow text-danger">— sesión</span>
@@ -52,17 +55,17 @@ export function SessionResume() {
           <span className="glace-eyebrow">— bienvenido de vuelta</span>
           <span className="glace-hairline flex-1" />
           <span className="glace-eyebrow text-content-disabled">
-            temporada {season.temporadaNumero} · semana {season.semanaActual}
+            temporada {temporadaNumero} · semana {semanaActual}
           </span>
         </div>
 
         <div className="col-span-12 flex flex-col justify-center gap-6">
           <h1 className="glace-reveal-letter font-display text-7xl leading-[0.9] text-content-primary">
-            {skater.name}
+            {skaterName}
           </h1>
           <p className="font-display italic text-2xl leading-relaxed text-content-secondary max-w-2xl">
             {sessionSummary?.mensajeResumen ??
-              `Continuando en la semana ${season.semanaActual}, temporada ${season.temporadaNumero}.`}
+              `Continuando en la semana ${semanaActual}, temporada ${temporadaNumero}.`}
           </p>
         </div>
 

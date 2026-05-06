@@ -50,13 +50,21 @@ const TENSION_LABEL: Record<string, string> = {
 
 export function WeeklyPlanning() {
   const navigate = useNavigate()
-  const { skater, club, season } = useGameStore(
-    useShallow(s => ({
-      skater: s.currentSkater,
-      club:   s.currentClub,
-      season: s.currentSeason,
-    })),
-  )
+  // skater and club are read in many fields (multiple weeklyState entries,
+  // installations, presupuesto…) so we subscribe to those entities whole.
+  // for season we project only the primitive/array references actually rendered
+  // — that way mutations to resultadosTemporada (after a competition)
+  // do not trigger a re-render of this hub.
+  const skater = useGameStore(s => s.currentSkater)
+  const club   = useGameStore(s => s.currentClub)
+  const { semanaActual, temporadaNumero, faseActual, calendario, historialSemanasLen } =
+    useGameStore(useShallow(s => ({
+      semanaActual:        s.currentSeason?.semanaActual,
+      temporadaNumero:     s.currentSeason?.temporadaNumero,
+      faseActual:          s.currentSeason?.faseActual,
+      calendario:          s.currentSeason?.calendario,
+      historialSemanasLen: s.currentSeason?.historialSemanas.length ?? 0,
+    })))
   // narrow selectors so the panel only re-renders when the breakdown changes
   const lastEconomyBreakdown = useGameStore(s => s.lastEconomyBreakdown)
   const lastPressureState    = useGameStore(s => s.lastPressureState)
@@ -81,12 +89,16 @@ export function WeeklyPlanning() {
     if (!club) return {}
     return Object.fromEntries(club.instalaciones.map(i => [i.id, i.nivel]))
   }, [club])
+  // resolveWeekEffects needs the full season object; we read it from the store
+  // imperatively to avoid pinning a season-wide subscription. the deps capture
+  // every season field the engine inspects (semanaActual, calendario, historial).
   const projection = useMemo(() => {
-    if (!skater || !season || !schedule) return null
-    return resolveWeekEffects(schedule, skater, season, installationLevels, () => 0.5)
-  }, [skater, season, schedule, installationLevels])
+    const seasonNow = useGameStore.getState().currentSeason
+    if (!skater || !seasonNow || !schedule) return null
+    return resolveWeekEffects(schedule, skater, seasonNow, installationLevels, () => 0.5)
+  }, [skater, schedule, installationLevels, semanaActual, calendario, historialSemanasLen])
 
-  if (!skater || !club || !season) {
+  if (!skater || !club || semanaActual === undefined || !calendario || temporadaNumero === undefined || !faseActual) {
     return (
       <div className="flex min-h-screen items-center justify-center glace-vignette">
         <p className="font-display italic text-content-secondary">No hay partida activa.</p>
@@ -107,7 +119,7 @@ export function WeeklyPlanning() {
     // a 31st (validators forbid semana > 30). Route straight to SEASON_END.
     // Also covers the case where a comp/event week wrapped up at week 30 and
     // would otherwise re-process week 30 forever.
-    if (season!.semanaActual > 30 || season!.historialSemanas.length >= 30) {
+    if (semanaActual! > 30 || historialSemanasLen >= 30) {
       useGameStore.getState().changeState(GameState.SEASON_END)
       navigate('/fin-temporada', { replace: true })
       return
@@ -119,11 +131,11 @@ export function WeeklyPlanning() {
   const fatigueProj = (skater.weeklyState.fatigaAcumulada ?? 0) + (projection?.fatigueDelta ?? 0)
   const stressProj  = (skater.weeklyState.estres ?? 0) + (projection?.stressDelta ?? 0)
   const injury = skater.weeklyState.currentInjury
-  const isCompetitionWeek = season.calendario.some(
-    c => c.semana === season.semanaActual && c.clasificado,
+  const isCompetitionWeek = calendario.some(
+    c => c.semana === semanaActual && c.clasificado,
   )
-  const nextComp = season.calendario
-    .filter(c => c.clasificado && c.semana >= season.semanaActual)
+  const nextComp = calendario
+    .filter(c => c.clasificado && c.semana >= semanaActual)
     .sort((a, b) => a.semana - b.semana)[0]
   const filledCount = slots.filter(s => s.activityId !== null).length
 
@@ -133,7 +145,7 @@ export function WeeklyPlanning() {
       {/* ─── decorative side margin: vertical numeration like a play programme ── */}
       <div className="pointer-events-none fixed left-6 top-0 hidden h-screen flex-col items-center justify-center gap-3 lg:flex">
         <span className="glace-eyebrow [writing-mode:vertical-rl] rotate-180 text-content-disabled">
-          glacé · acto i · escena {String(season.semanaActual).padStart(2, '0')} de 30
+          glacé · acto i · escena {String(semanaActual).padStart(2, '0')} de 30
         </span>
       </div>
 
@@ -144,7 +156,7 @@ export function WeeklyPlanning() {
           <span className="glace-eyebrow">— hub semanal</span>
           <span className="glace-hairline flex-1" />
           <span className="glace-eyebrow text-content-disabled">
-            temporada {String(season.temporadaNumero).padStart(2, '0')} · {FASE_LABEL[season.faseActual] ?? season.faseActual}
+            temporada {String(temporadaNumero).padStart(2, '0')} · {FASE_LABEL[faseActual] ?? faseActual}
           </span>
           {isCompetitionWeek && (
             <span className="glace-eyebrow text-gold">— hoy se compite</span>
@@ -162,7 +174,7 @@ export function WeeklyPlanning() {
               className="glace-number glace-reveal-letter block text-content-primary"
               style={{ fontSize: 'clamp(10rem, 22vw, 22rem)' }}
             >
-              {String(season.semanaActual).padStart(2, '0')}
+              {String(semanaActual).padStart(2, '0')}
             </span>
             {/* tiny ornament under the number */}
             <div className="mt-2 flex items-baseline gap-3 text-content-disabled">
@@ -171,10 +183,10 @@ export function WeeklyPlanning() {
               </span>
               <span className="glace-hairline w-24" />
               <span className="font-display italic text-base">
-                {season.semanaActual <= 8 ? 'el cuerpo aún se asienta' :
-                 season.semanaActual <= 14 ? 'los programas comienzan a sostenerse' :
-                 season.semanaActual <= 22 ? 'lo que importa empieza a medirse' :
-                 season.semanaActual <= 26 ? 'entre el último gran resultado y la temporada que viene' :
+                {semanaActual <= 8 ? 'el cuerpo aún se asienta' :
+                 semanaActual <= 14 ? 'los programas comienzan a sostenerse' :
+                 semanaActual <= 22 ? 'lo que importa empieza a medirse' :
+                 semanaActual <= 26 ? 'entre el último gran resultado y la temporada que viene' :
                  'la temporada ya solo se cierra'}
               </span>
             </div>
@@ -189,7 +201,7 @@ export function WeeklyPlanning() {
               {isCompetitionWeek ? (
                 <>esta semana se sale a la pista. lo construido las semanas anteriores se mide hoy.</>
               ) : nextComp ? (
-                <>la próxima competición — <span className="text-ice-300">{nextComp.nombreCompeticion.toLowerCase()}</span> — está a {nextComp.semana - season.semanaActual} {nextComp.semana - season.semanaActual === 1 ? 'semana' : 'semanas'}.</>
+                <>la próxima competición — <span className="text-ice-300">{nextComp.nombreCompeticion.toLowerCase()}</span> — está a {nextComp.semana - semanaActual} {nextComp.semana - semanaActual === 1 ? 'semana' : 'semanas'}.</>
               ) : (
                 <>cinco ranuras. seis tensiones posibles. lo que decidas hoy se ve en la pista en quince días.</>
               )}
@@ -420,7 +432,7 @@ export function WeeklyPlanning() {
                 — avanzar a la semana
               </span>
               <span className="font-display tabular-nums text-4xl text-content-primary group-hover:text-ice-200 transition-colors leading-none">
-                {String((season.semanaActual ?? 0) + 1).padStart(2, '0')}
+                {String((semanaActual ?? 0) + 1).padStart(2, '0')}
               </span>
             </span>
             <span className="text-2xl text-ice-300 transition-transform duration-300 group-hover:translate-x-2">→</span>

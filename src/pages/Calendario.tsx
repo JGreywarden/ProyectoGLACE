@@ -15,9 +15,24 @@ const FASE_GROUPS: Array<{ fase: FaseSeason; range: [number, number]; label: str
 
 export function Calendario() {
   const navigate = useNavigate()
-  const { season } = useGameStore(useShallow(s => ({ season: s.currentSeason })))
+  // project only the primitive fields we actually consume so that mutations to
+  // unrelated season data (resultadosTemporada after a competition) skip this render
+  const { temporadaNumero, semanaActual, faseActual, calendario, historialSemanas } =
+    useGameStore(useShallow(s => ({
+      temporadaNumero:  s.currentSeason?.temporadaNumero,
+      semanaActual:     s.currentSeason?.semanaActual,
+      faseActual:       s.currentSeason?.faseActual,
+      calendario:       s.currentSeason?.calendario,
+      historialSemanas: s.currentSeason?.historialSemanas,
+    })))
 
-  if (!season) {
+  if (
+    temporadaNumero === undefined ||
+    semanaActual    === undefined ||
+    faseActual      === undefined ||
+    !calendario     ||
+    !historialSemanas
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center glace-vignette">
         <p className="font-display italic text-content-secondary">No hay temporada activa.</p>
@@ -25,9 +40,9 @@ export function Calendario() {
     )
   }
 
-  const competitionWeeks = new Set(season.calendario.filter(c => c.clasificado).map(c => c.semana))
+  const competitionWeeks = new Set(calendario.filter(c => c.clasificado).map(c => c.semana))
   const eventWeeks = new Set(
-    season.historialSemanas.filter(w => w.eventoNarrativoId).map(w => w.semana),
+    historialSemanas.filter(w => w.eventoNarrativoId).map(w => w.semana),
   )
 
   return (
@@ -50,11 +65,11 @@ export function Calendario() {
         <header className="col-span-12 md:col-span-9 flex flex-col gap-2">
           <span className="glace-eyebrow">— treinta semanas</span>
           <h1 className="glace-reveal-letter font-display text-7xl leading-[0.9] text-content-primary">
-            Temporada <span className="italic text-ice-300">{String(season.temporadaNumero).padStart(2, '0')}</span>
+            Temporada <span className="italic text-ice-300">{String(temporadaNumero).padStart(2, '0')}</span>
           </h1>
           <p className="font-display italic text-lg text-content-secondary">
-            actualmente en la semana {season.semanaActual} ·{' '}
-            {FASE_GROUPS.find(g => g.fase === season.faseActual)?.label}
+            actualmente en la semana {semanaActual} ·{' '}
+            {FASE_GROUPS.find(g => g.fase === faseActual)?.label}
           </p>
         </header>
 
@@ -91,7 +106,7 @@ export function Calendario() {
 
                 <div className="grid grid-cols-8 gap-px bg-border-subtle">
                   {weeks.map(semana => {
-                    const compName = season.calendario
+                    const compName = calendario
                       .find(c => c.semana === semana && c.clasificado)?.nombreCompeticion
                     return (
                       <SeasonCell
@@ -100,7 +115,7 @@ export function Calendario() {
                         fase={getFasePorSemana(semana)}
                         hasCompetition={competitionWeeks.has(semana)}
                         hasEvent={eventWeeks.has(semana)}
-                        isCurrent={semana === season.semanaActual}
+                        isCurrent={semana === semanaActual}
                         tooltip={compName ? `Semana ${semana} — ${compName}` : `Semana ${semana} — ${g.label}`}
                       />
                     )
@@ -108,7 +123,7 @@ export function Calendario() {
                 </div>
 
                 {/* competition titles within this phase */}
-                {season.calendario
+                {calendario
                   .filter(c => c.semana >= g.range[0] && c.semana <= g.range[1])
                   .map(c => (
                     <p key={c.nombreCompeticion} className="text-xs text-content-muted">

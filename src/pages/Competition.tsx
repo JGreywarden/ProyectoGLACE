@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useShallow } from 'zustand/shallow'
 
 import { GameState, useGameStore } from '@/stores/gameStore'
 import { useNarrativeStore } from '@/features/narrative'
@@ -40,18 +39,23 @@ type Stage =
 
 export function Competition() {
   const navigate = useNavigate()
-  const { skater, season } = useGameStore(
-    useShallow(s => ({ skater: s.currentSkater, season: s.currentSeason })),
-  )
+  // skater is read in many fields (id, name, nationality) — subscribe whole.
+  // for season we narrow: the engine inputs (full season) are pulled via
+  // getState() inside callbacks; the render only consumes semanaActual and the
+  // resultadosTemporada array. that way mutations to historialSemanas mid-flight
+  // (which would not be observable here) cannot trigger spurious re-renders.
+  const skater              = useGameStore(s => s.currentSkater)
+  const semanaActual        = useGameStore(s => s.currentSeason?.semanaActual)
+  const resultadosTemporada = useGameStore(s => s.currentSeason?.resultadosTemporada)
   const triggerMoment = useNarrativeStore(s => s.triggerMoment)
   const resolveChoice = useNarrativeStore(s => s.resolveChoice)
 
   // ── locate the most recent CompetitionResult for this skater ──────────────
   const initialResult = useMemo<CompetitionResult | null>(() => {
-    if (!season || !skater) return null
-    const owned = season.resultadosTemporada.filter(r => r.skaterId === skater.id)
+    if (!resultadosTemporada || !skater) return null
+    const owned = resultadosTemporada.filter(r => r.skaterId === skater.id)
     return owned[owned.length - 1] ?? null
-  }, [season, skater])
+  }, [resultadosTemporada, skater])
 
   // ── working copies of the per-program data; mutated by Moments ────────────
   const [elementsCorto, setElementsCorto] = useState<ElementOutcome[] | null>(null)
@@ -125,10 +129,11 @@ export function Competition() {
     }
     const id = window.setTimeout(() => {
       const trigger = pickTriggerForIndex(revealedIndex, elementCount)
-      if (trigger && !triggeredFor.current.has(trigger) && skater && season) {
+      const seasonNow = useGameStore.getState().currentSeason
+      if (trigger && !triggeredFor.current.has(trigger) && skater && seasonNow) {
         triggeredFor.current.add(trigger)
         const ev = triggerMoment(trigger, {
-          skater, season,
+          skater, season: seasonNow,
           narrativeFlags:  useNarrativeStore.getState().narrativeFlags,
           emittedEvents:   useNarrativeStore.getState().emittedEvents,
           decisionHistory: useNarrativeStore.getState().decisionHistory,
@@ -141,7 +146,7 @@ export function Competition() {
       setRevealedIndex(i => i + 1)
     }, REVEAL_DELAY_MS)
     return () => window.clearTimeout(id)
-  }, [isSkating, isSpSkating, moment, activeElements, elementCount, revealedIndex, skater, season, triggerMoment, triggeredFor])
+  }, [isSkating, isSpSkating, moment, activeElements, elementCount, revealedIndex, skater, triggerMoment, triggeredFor])
 
   // ── judges → score animation transition ───────────────────────────────────
   useEffect(() => {
@@ -199,7 +204,7 @@ export function Competition() {
 
   // ── moment resolution: mutate the active elements before reveal continues ─
   function handleMomentChoice(optionId: string) {
-    if (!moment || !skater || !season) return
+    if (!moment || !skater || semanaActual === undefined) return
     const programType = isSpSkating ? 'corto' : 'libre'
     const outcome = resolveChoice(optionId)
     setMoment(null)
@@ -276,7 +281,7 @@ export function Competition() {
     navigate('/semana', { replace: true })
   }
 
-  if (!skater || !season || !initialResult) {
+  if (!skater || semanaActual === undefined || !initialResult) {
     return (
       <div className="flex min-h-screen items-center justify-center glace-vignette">
         <p className="font-display italic text-content-secondary">No hay competición lista.</p>
@@ -298,7 +303,7 @@ export function Competition() {
           <span className="glace-eyebrow text-gold">— competición</span>
           <span className="glace-hairline flex-1" />
           <span className="glace-eyebrow text-content-disabled">
-            semana {String(season.semanaActual).padStart(2, '0')} · {initialResult.tipo}
+            semana {String(semanaActual).padStart(2, '0')} · {initialResult.tipo}
           </span>
         </div>
         <div className="col-span-12 md:col-span-9 flex flex-col gap-1">
