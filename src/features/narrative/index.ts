@@ -18,6 +18,8 @@ export type {
 
 export { useNarrativeStore } from './store'
 
+export type { LoadEventsResult } from './service'
+
 export {
   loadEvents,
   evaluateConditions,

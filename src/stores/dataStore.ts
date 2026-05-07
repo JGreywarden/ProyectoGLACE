@@ -18,9 +18,20 @@ export type { EventType, NarrativeEvent, Judge, RandomEventConditions } from '@/
 
 // ─── store ────────────────────────────────────────────────────────────────────
 
+// 'ok'       — every data file loaded
+// 'degraded' — at least one optional file failed (e.g. music_library); game can still start
+// 'failed'   — a load-bearing file is missing (judges, installations, competitions);
+//              callers must block "Nueva partida" until the user retries
+export type DataLoadStatus = 'idle' | 'loading' | 'ok' | 'degraded' | 'failed'
+
 interface DataStoreState {
-  /** true once preloadAll() has resolved without errors */
-  loaded: boolean
+  /** true once preloadAll() resolved AND no critical file is missing */
+  loaded:       boolean
+  status:       DataLoadStatus
+  /** absolute paths of files that failed in the last preloadAll() call */
+  failedPaths:  string[]
+  /** subset of failedPaths whose absence blocks new games */
+  criticalMissing: string[]
   preloadAll:      () => Promise<void>
   getEventsByType: (type: EventType) => Promise<NarrativeEvent[]>
   getRandomEvent:  (conditions: RandomEventConditions) => Promise<NarrativeEvent | null>
@@ -30,11 +41,28 @@ interface DataStoreState {
 export const useDataStore = create<DataStoreState>()(
   devtools(
     (set) => ({
-      loaded: false,
+      loaded:          false,
+      status:          'idle',
+      failedPaths:     [],
+      criticalMissing: [],
 
       preloadAll: async () => {
-        await preloadAll()
-        set({ loaded: true }, false, 'data/preloadAll')
+        set({ status: 'loading' }, false, 'data/preloadStart')
+        const { failed, critical } = await preloadAll()
+        const status: DataLoadStatus =
+          critical.length > 0 ? 'failed'
+          : failed.length > 0 ? 'degraded'
+          : 'ok'
+        set(
+          {
+            loaded:          status !== 'failed',
+            status,
+            failedPaths:     failed,
+            criticalMissing: critical,
+          },
+          false,
+          'data/preloadAll',
+        )
       },
 
       getEventsByType: (type) => getEventsByType(type),

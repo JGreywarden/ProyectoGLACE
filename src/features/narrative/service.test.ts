@@ -484,10 +484,11 @@ describe('loadEvents integration', () => {
     })
     vi.stubGlobal('fetch', mock)
 
-    const events = await loadEvents()
+    const { events, missing } = await loadEvents()
     expect(events.find(e => e.id === 'c1')?.tipo).toBe('crisis')
     expect(events.find(e => e.id === 'mm1')?.tipo).toBe('momento_competicion')
     expect(events.find(e => e.id === 'co1')?.tipo).toBe('cotidiano')
+    expect(missing).toEqual([])
   })
 
   it('selectWeeklyEvent on loaded pool never picks a Moment', async () => {
@@ -502,7 +503,7 @@ describe('loadEvents integration', () => {
     })
     vi.stubGlobal('fetch', mock)
 
-    const pool = await loadEvents()
+    const { events: pool } = await loadEvents()
     const picked = selectWeeklyEvent(pool, makeContext(), () => 0.1)
     expect(picked?.tipo).not.toBe('momento_competicion')
   })
@@ -522,7 +523,7 @@ describe('loadEvents integration', () => {
     })
     vi.stubGlobal('fetch', mock)
 
-    const pool = await loadEvents()
+    const { events: pool } = await loadEvents()
     const picked = selectCompetitionMoment(pool, 'early', makeContext(), () => 0)
     expect(picked?.id).toBe('mm1')
     expect(picked?.trigger).toBe('early')
@@ -541,10 +542,30 @@ describe('loadEvents integration', () => {
     })
     vi.stubGlobal('fetch', mock)
 
-    const events = await loadEvents()
+    const { events } = await loadEvents()
     expect(events.find(e => e.id === 'good')).toBeDefined()
     expect(events.find(e => e.id === 'bad')).toBeUndefined()
     expect(warn).toHaveBeenCalled()
+  })
+
+  it('reports partial-load missing categories without throwing', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const mock = vi.fn(async (url: string): Promise<Response> => {
+      if (url.endsWith('/data/events/cotidiano.json')) {
+        return new Response(JSON.stringify([makeEvent({ id: 'co1' })]))
+      }
+      // crisis fails with HTTP 404; rest return invalid payload
+      if (url.endsWith('/data/events/crisis.json')) {
+        return new Response('', { status: 404 })
+      }
+      return new Response('{"not":"an array"}')
+    })
+    vi.stubGlobal('fetch', mock)
+
+    const { events, missing } = await loadEvents()
+    expect(events.find(e => e.id === 'co1')).toBeDefined()
+    expect(missing).toContain('crisis')
+    expect(missing).not.toContain('cotidiano')
   })
 
   it('throws when every file fails to load', async () => {
