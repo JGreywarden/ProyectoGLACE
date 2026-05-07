@@ -411,7 +411,10 @@ function estimateBpm(buffer: AudioBufferLike): number | null {
     const bpm = (60 * framesPerSecond) / bestLag
     if (!Number.isFinite(bpm) || bpm < 50 || bpm > 220) return null
     return Math.round(bpm)
-  } catch {
+  } catch (err) {
+    // log so a global heuristic regression is visible in DevTools instead of
+    // silently returning tempo: null on every track
+    console.warn('[program] BPM estimate failed', err)
     return null
   }
 }
@@ -466,7 +469,8 @@ export async function extractMusicInfo(source: File | string): Promise<MusicInfo
       duration: decoded.duration,
       tempo,
     }
-  } catch {
+  } catch (err) {
+    console.warn('[program] music decode failed', err)
     return { sourceId, title: baseTitle, duration: 0, tempo: null }
   } finally {
     if (ctx?.close) {

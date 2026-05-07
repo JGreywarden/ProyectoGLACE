@@ -213,46 +213,56 @@ export function validateNarrativeEvent(data: unknown): data is NarrativeEvent {
 
 // ─── pool loader ─────────────────────────────────────────────────────────────
 
+export interface LoadEventsResult {
+  events: NarrativeEvent[]
+  /** event-type files (e.g. 'crisis') that failed to load or were malformed */
+  missing: string[]
+}
+
 /**
  * fetches and validates every event file under /data/events/.
- * individual file failures log a warning and are skipped; if ALL files fail
- * this throws — the caller should handle it as a hard bootstrap error.
+ * if ALL files fail this throws — the caller should handle it as a hard
+ * bootstrap error. otherwise returns the events that loaded successfully plus
+ * the list of missing categories so the UI can degrade explicitly instead of
+ * silently running on a partial pool.
  */
-export async function loadEvents(): Promise<NarrativeEvent[]> {
+export async function loadEvents(): Promise<LoadEventsResult> {
   const events: NarrativeEvent[] = []
-  let successCount = 0
+  const missing: string[] = []
 
   for (const tipo of EVENT_FILES) {
+    let fileLoaded = false
     try {
       const res = await fetch(`/data/events/${tipo}.json`)
       if (!res.ok) {
         console.warn(`[narrative] skip ${tipo}.json: HTTP ${res.status}`)
-        continue
-      }
-      const raw: unknown = await res.json()
-      if (!Array.isArray(raw)) {
-        console.warn(`[narrative] skip ${tipo}.json: expected array`)
-        continue
-      }
-      successCount++
-      for (const entry of raw) {
-        if (validateNarrativeEvent(entry)) {
-          events.push(entry)
+      } else {
+        const raw: unknown = await res.json()
+        if (!Array.isArray(raw)) {
+          console.warn(`[narrative] skip ${tipo}.json: expected array`)
         } else {
-          const id = isPlainObject(entry) && typeof entry['id'] === 'string' ? entry['id'] : '<anon>'
-          console.warn(`[narrative] invalid event in ${tipo}.json: ${id}`)
+          fileLoaded = true
+          for (const entry of raw) {
+            if (validateNarrativeEvent(entry)) {
+              events.push(entry)
+            } else {
+              const id = isPlainObject(entry) && typeof entry['id'] === 'string' ? entry['id'] : '<anon>'
+              console.warn(`[narrative] invalid event in ${tipo}.json: ${id}`)
+            }
+          }
         }
       }
     } catch (err) {
       console.warn(`[narrative] failed to load ${tipo}.json:`, err)
     }
+    if (!fileLoaded) missing.push(tipo)
   }
 
-  if (successCount === 0) {
+  if (missing.length === EVENT_FILES.length) {
     throw new Error('[narrative] failed to load any event file')
   }
 
-  return events
+  return { events, missing }
 }
 
 // ─── temporal context helpers ───────────────────────────────────────────────

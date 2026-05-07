@@ -440,12 +440,29 @@ export async function getMusicLibraryEntry(id: string): Promise<MusicLibraryEntr
   return all.find(e => e.id === id) ?? null
 }
 
+// paths whose absence breaks load-bearing features (panel de jueces, calendario,
+// instalaciones del club). a missing optional file (music_library) only
+// degrades; a missing critical file should block "Nueva partida".
+const CRITICAL_DATA_PATHS: readonly string[] = [
+  '/data/judges.json',
+  '/data/installations.json',
+  '/data/competitions.json',
+]
+
+export interface PreloadResult {
+  /** absolute paths that failed to load */
+  failed:   string[]
+  /** subset of `failed` whose absence is load-bearing */
+  critical: string[]
+}
+
 /**
  * fetches all static data files in parallel and populates the cache.
- * call during BOOT to avoid hitches on the first game week.
- * individual file failures are warned but do not reject the promise.
+ * returns the list of files that failed so the caller can decide between
+ * blocking, degraded mode, or full success. callers must not assume success
+ * just because the promise resolved.
  */
-export async function preloadAll(): Promise<void> {
+export async function preloadAll(): Promise<PreloadResult> {
   const paths = [
     ...EVENT_TYPES.map(t => EVENT_PATHS[t]),
     '/data/judges.json',
@@ -455,9 +472,13 @@ export async function preloadAll(): Promise<void> {
   ]
 
   const results = await Promise.allSettled(paths.map(path => load(path)))
+  const failed: string[] = []
   results.forEach((result, i) => {
     if (result.status === 'rejected') {
       console.warn(`dataService: ${paths[i]} no disponible — funcionalidad limitada`)
+      failed.push(paths[i])
     }
   })
+  const critical = failed.filter(p => CRITICAL_DATA_PATHS.includes(p))
+  return { failed, critical }
 }

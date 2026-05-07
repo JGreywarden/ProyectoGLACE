@@ -29,6 +29,10 @@ interface NarrativeState {
   lastEmittedBySubtype: Partial<Record<NarrativeEventType, number>>
   /** chronological log of every player decision (events + Moments) */
   decisionHistory:      DecisionRecord[]
+  /** event-type files that failed to load on the last loadPool() call.
+   *  empty array on full success; populated entries let the UI flag a
+   *  degraded narrative instead of running silently on a partial pool. */
+  missingCategories:    string[]
 
   loadPool:      () => Promise<void>
   triggerEvent:  (ctx: NarrativeContext, rng?: () => number) => NarrativeEvent | null
@@ -59,11 +63,19 @@ export const useNarrativeStore = create<NarrativeState>()(
       emittedEvents:        [],
       lastEmittedBySubtype: {},
       decisionHistory:      [],
+      missingCategories:    [],
 
       loadPool: async () => {
         if (get().availableEvents.length > 0) return
-        const events = await loadEvents()
-        set({ availableEvents: events }, false, 'narrative/loadPool')
+        const { events, missing } = await loadEvents()
+        if (missing.length > 0) {
+          console.warn(`[narrative] partial load — missing categories: ${missing.join(', ')}`)
+        }
+        set(
+          { availableEvents: events, missingCategories: missing },
+          false,
+          'narrative/loadPool',
+        )
       },
 
       triggerEvent: (ctx, rng = Math.random) => {
